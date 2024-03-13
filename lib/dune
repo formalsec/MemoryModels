@@ -1,5 +1,4 @@
 (library
-  (name memory_models)
-  (public_name memory_models)
-  (libraries 
-    encoding))
+ (name memory_models)
+ (public_name memory_models)
+ (libraries encoding))
