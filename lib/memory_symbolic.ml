@@ -1,52 +1,49 @@
 open Encoding
 
 module Make (O : Object_intf.S with type value = Encoding.Expr.t) = struct
+  type value = Encoding.Expr.t
   type loc = int
   type object_ = O.t
 
-  type t = {
-    parent : t option;
-    data : (loc, object_) Hashtbl.t;
-    mutable next : loc;
-  }
+  type t =
+    { parent : t option
+    ; map : (loc, object_) Hashtbl.t
+    ; mutable next : loc
+    }
 
-  type value = Encoding.Expr.t
+  let create () : t = { parent = None; map = Hashtbl.create 512; next = 0 }
+  let clone (h : t) : t = { parent = Some h; map = Hashtbl.create 16; next = 0 }
 
-  let create () : t = { parent = None; data = Hashtbl.create 512; next = 0 }
+  let insert (h : t) (o : object_) : value =
+    Hashtbl.replace h.map h.next o;
+    h.next <- h.next + 1;
+    Expr.(make @@ Val (Int h.next))
 
-  let clone (memory : t) : t =
-    { parent = Some memory; data = Hashtbl.create 16; next = 0 }
+  let remove (h : t) (loc : loc) : unit = Hashtbl.remove h.map loc
 
-  let insert (memory : t) (o : object_) : value =
-    Hashtbl.replace memory.data memory.next o;
-    memory.next <- memory.next + 1;
-    Expr.(make @@ Val (Int memory.next))
+  let set ({ map = h; _ } : t) (loc : loc) (data : object_) : unit =
+    Hashtbl.replace h loc data
 
-  let remove (memory : t) (l : loc) : unit = Hashtbl.remove memory.data l
-
-  let set ({ data = memory; _ } : t) (key : loc) (data : object_) : unit =
-    Hashtbl.replace memory key data
-
-  let find (memory : t) (l : loc) : (object_ * bool) option =
+  let find (h : t) (loc : loc) : (object_ * bool) option =
     let open Utils.Option in
-    let rec aux { parent; data; _ } l from_parent =
-      match Hashtbl.find_opt data l with
+    let rec aux { parent; map; _ } loc from_parent =
+      match Hashtbl.find_opt map loc with
       | Some o -> Some (o, from_parent)
       | None ->
-          let* parent = parent in
-          aux parent l true
+        let* parent in
+        aux parent loc true
     in
-    aux memory l false
+    aux h loc false
 
-  let get (memory : t) (l : loc) : object_ option =
+  let get (h : t) (loc : loc) : object_ option =
     let open Utils.Option in
-    let+ obj, from_parent = find memory l in
+    let+ obj, from_parent = find h loc in
     match from_parent with
     | false -> obj
     | true ->
-        let obj = O.clone obj in
-        set memory l obj;
-        obj
+      let obj = O.clone obj in
+      set h loc obj;
+      obj
 
   let has_field (h : t) (loc : loc) (field : value) : value =
     Option.fold (get h loc)
@@ -57,7 +54,7 @@ module Make (O : Object_intf.S with type value = Encoding.Expr.t) = struct
     Option.iter
       (fun o ->
         let o' = O.set o ~key:field ~data in
-        set h loc o')
+        set h loc o' )
       (get h loc)
 
   let get_field (h : t) (loc : loc) (field : value) : (value * value list) list
@@ -70,12 +67,37 @@ module Make (O : Object_intf.S with type value = Encoding.Expr.t) = struct
     Option.iter
       (fun o ->
         let o' = O.delete o f in
-        set h loc o')
+        set h loc o' )
       obj
+
+  let rec unfold_ite ~(accum : value) (e : value) : (value option * loc) list =
+    match Expr.view e with
+    | Val (Int x) (* | Val (Val.Symbol x)  *) -> [ (Some accum, x) ]
+    | Triop (_, Ty.Ite, c, a, e) -> (
+      match Expr.view a with
+      | Val (Int l) ->
+        let accum' =
+          Expr.(binop Ty.Ty_bool Ty.And accum (unop Ty.Ty_bool Ty.Not c))
+        in
+        let tl = unfold_ite ~accum:accum' e in
+        (Some Expr.(binop Ty.Ty_bool Ty.And accum c), l) :: tl
+      | _ -> assert false )
+    | _ -> assert false
+
+  let loc (e : value) : ((value option * loc) list, string) Result.t =
+    match Expr.view e with
+    | Val (Int l) -> Ok [ (None, l) ]
+    | Triop (_, Ty.Ite, c, a, v) -> (
+      match Expr.view a with
+      | Val (Int l) ->
+        Ok ((Some c, l) :: unfold_ite ~accum:Expr.(unop Ty.Ty_bool Ty.Not c) v)
+      | _ -> Error (Fmt.asprintf "Value '%a' is not a loc expression" Expr.pp e)
+      )
+    | _ -> Error (Fmt.asprintf "Value '%a' is not a loc expression" Expr.pp e)
 
   let pp_loc (fmt : Fmt.t) (loc : loc) : unit = Fmt.pp_int fmt loc
 
-  let rec pp fmt ({ data; parent; _ } : t) =
+  let rec pp (fmt : Fmt.t) ({ map; parent; _ } : t) =
     let open Fmt in
     let pp_v fmt (key, data) = fprintf fmt "%a: %a" pp_loc key O.pp data in
     let pp_parent fmt v =
@@ -83,42 +105,16 @@ module Make (O : Object_intf.S with type value = Encoding.Expr.t) = struct
     in
     fprintf fmt "%a{ %a }" pp_parent parent
       (pp_hashtbl ~pp_sep:pp_comma pp_v)
-      data
+      map
 
-  let rec unfold_ite ~(accum : value) (e : value) : (value option * loc) list =
-    match Expr.view e with
-    | Val (Int x) (* | Val (Val.Symbol x)  *) -> [ (Some accum, x) ]
-    | Triop (_, Ty.Ite, c, a, e) -> (
-        match Expr.view a with
-        | Val (Int l) ->
-            let accum' =
-              Expr.(binop Ty.Ty_bool Ty.And accum (unop Ty.Ty_bool Ty.Not c))
-            in
-            let tl = unfold_ite ~accum:accum' e in
-            (Some Expr.(binop Ty.Ty_bool Ty.And accum c), l) :: tl
-        | _ -> assert false)
-    | _ -> assert false
-
-  let loc (e : value) : ((value option * loc) list, string) Result.t =
-    match Expr.view e with
-    | Val (Int l) -> Ok [ (None, l) ]
-    | Triop (_, Ty.Ite, c, a, v) -> (
-        match Expr.view a with
-        | Val (Int l) ->
-            Ok
-              ((Some c, l)
-              :: unfold_ite ~accum:Expr.(unop Ty.Ty_bool Ty.Not c) v)
-        | _ ->
-            Error (Fmt.asprintf "Value '%a' is not a loc expression" Expr.pp e))
-    | _ -> Error (Fmt.asprintf "Value '%a' is not a loc expression" Expr.pp e)
-
-  let pp_val (h : t) (e : value) : string =
+  let pp_val (fmt : Fmt.t) (h : t) (e : value) : unit =
+    let open Fmt in
     match Expr.view e with
     | Val (Int l) -> (
-        match get h l with
-        | None -> Fmt.asprintf "%a" pp_loc l
-        | Some o -> Fmt.asprintf "%a -> %a" pp_loc l O.pp o)
-    | _ -> Fmt.asprintf "%a" Expr.pp e
+      match get h l with
+      | None -> fprintf fmt "%a" pp_loc l
+      | Some o -> fprintf fmt "%a -> %a" pp_loc l O.pp o )
+    | _ -> fprintf fmt "%a" Expr.pp e
 end
 
 module M :

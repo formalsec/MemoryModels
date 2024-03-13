@@ -14,7 +14,7 @@ module type S = sig
   val get_field : t -> loc -> value -> (value * value list) list
   val has_field : t -> loc -> value -> value
   val delete_field : t -> loc -> value -> unit
-  val pp : Format.formatter -> t -> unit
   val loc : value -> ((value option * loc) list, string) Result.t
-  val pp_val : t -> value -> string
+  val pp : Fmt.t -> t -> unit
+  val pp_val : Fmt.t -> t -> value -> unit
 end
