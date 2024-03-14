@@ -81,7 +81,6 @@ module M : Object_intf.S with type value = Encoding.Expr.t = struct
         if Expr.(equal key0 key) then acc else (data, eq key0 key) :: acc )
       m []
 
-  (* FIXME: @174 *)
   let get ({ fields; symbols } : t) (key : value) : (value * value list) list =
     match Expr.view key with
     | Val _ -> (
