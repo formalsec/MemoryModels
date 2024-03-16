@@ -54,11 +54,11 @@ module M : Object_intf.S with type value = Encoding.Expr.t = struct
       | _ ->
         let r0 =
           VMap.fold
-            (fun key _ acc -> ite (eq key key) (boolean true) acc)
+            (fun key0 _ acc -> ite (eq key key0) (boolean true) acc)
             o.symbols (boolean false)
         in
         VMap.fold
-          (fun key _ acc -> ite (eq key key) (boolean true) acc)
+          (fun key0 _ acc -> ite (eq key key0) (boolean true) acc)
           o.fields r0
 
   let map_ite (m : value VMap.t) ~(key : value) ~(data : value) : value VMap.t =
@@ -75,10 +75,10 @@ module M : Object_intf.S with type value = Encoding.Expr.t = struct
       ; symbols = map_ite o.symbols ~key ~data |> VMap.add key data
       }
 
-  let fold_eq (m : value VMap.t) (key0 : value) : (value * value) list =
+  let fold_eq (m : value VMap.t) (key : value) : (value * value) list =
     VMap.fold
-      (fun key data acc ->
-        if Expr.(equal key0 key) then acc else (data, eq key0 key) :: acc )
+      (fun key0 data acc ->
+        if Expr.(equal key key0) then acc else (data, eq key key0) :: acc )
       m []
 
   let get ({ fields; symbols } : t) (key : value) : (value * value list) list =
