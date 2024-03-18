@@ -57,8 +57,8 @@ let () =
   assert (Obj.get_fields obj = [ x ]);
   (* FIXME: (1) [has_field] when receiving a concrete field just search in the concrete table, does not take consideration
      symbolic fields that are stored in the object *)
-  (* [has_field "foo"] If "foo" = x then true else false *)
   (* Format.printf "Has field foo: %a\n\n" Expr.pp (Obj.has_field obj foo); *)
+  (* [has_field "foo"] If "foo" = x then true else false *)
   assert (
     Obj.has_field obj foo = ite (eq foo x) (value_bool true) (value_bool false) );
   (* [has_field x] If x = x then true else false *)

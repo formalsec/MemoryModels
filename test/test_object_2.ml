@@ -26,7 +26,19 @@ let () =
       [ (foo, ite (eq x foo) val_200 val_100); (x, val_200) ] );
   assert (list_is_equal (Obj.get_fields obj) [ foo; x ]);
   assert (Obj.has_field obj foo = value_bool true);
-  assert (Obj.has_field obj x =  ite (eq x foo) (value_bool true) (ite (eq x x) (value_bool true) (value_bool false)));
+  assert (
+    Obj.has_field obj x
+    = ite (eq x foo) (value_bool true)
+        (ite (eq x x) (value_bool true) (value_bool false)) );
+  (* FIXME: (1) *)
+  (* Format.printf "[has_field banana]: %a\n\n" Encoding.Expr.pp (Obj.has_field obj banana); *)
+  assert (
+    Obj.has_field obj banana
+    = ite (eq banana x) (value_bool true) (value_bool false) );
+  assert (
+    Obj.has_field obj y
+    = ite (eq y foo) (value_bool true)
+        (ite (eq y x) (value_bool true) (value_bool false)) );
   assert (Obj.get obj foo = [ (ite (eq x foo) val_200 val_100, []) ]);
   assert (Obj.get obj x = [ (val_200, []) ]);
   (* [get "banana"] If "banana" = x then 200 else undef *)
@@ -56,10 +68,29 @@ let () =
     = ite (eq x foo) (value_bool true)
         (ite (eq x banana) (value_bool true)
            (ite (eq x x) (value_bool true) (value_bool false)) ) );
+  (* [has_field y] If y = foo then true else if y = banana then true else if y = x then true else false *)
+  assert (
+    Obj.has_field obj y
+    = ite (eq y foo) (value_bool true)
+        (ite (eq y banana) (value_bool true)
+           (ite (eq y x) (value_bool true) (value_bool false)) ) );
   assert (Obj.get obj foo = [ (ite (eq x foo) val_200 val_100, []) ]);
   assert (Obj.get obj banana = [ (val_300, []) ]);
   (* [get x] 200 *)
   assert (Obj.get obj x = [ (val_200, []) ]);
+  (* FIXME:
+     (2)
+     (3) the ite that it gets from the concrete table is not coerent. It outputs an expression without condition of
+     ite(y = banana, 300, ite(x=foo, 300, 100)), but on the else branch it does not means that y=foo, we can just say that y != banana*)
+  (* Format.printf "[get y]: %a\n\n" (Fmt.pp_lst (fun fmt (a, b) -> Fmt.fprintf fmt "(%a, %a)" Encoding.Expr.pp a (Fmt.pp_lst Encoding.Expr.pp) b)) (Obj.get obj y); *)
+  (* [get y] if y = foo then ite(x = "foo", 200, 100) else if y = banana then 300 else if y = x then 200 else undef *)
+  assert (
+    list_is_equal (Obj.get obj y)
+      [ (ite (eq x foo) val_200 val_100, [ eq y foo ])
+      ; (val_300, [ ne (eq y foo); eq y banana ])
+      ; (val_200, [ ne (eq y foo); ne (eq y banana); eq y x ])
+      ; (undef, [ ne (eq y foo); ne (eq y x) ])
+      ] );
 
   (*********** Symbolic write {y : 400} ***********)
   (* {
