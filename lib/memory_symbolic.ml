@@ -11,7 +11,9 @@ module Make (O : Object_intf.S with type value = Encoding.Expr.t) = struct
     }
 
   let create () : t = { parent = None; map = Hashtbl.create 512; next = 0 }
-  let clone (h : t) : t = { parent = Some h; map = Hashtbl.create 16; next = 0 }
+
+  let clone (h : t) : t =
+    { parent = Some h; map = Hashtbl.create 16; next = h.next }
 
   let get_loc (loc : value) : int =
     match Expr.view loc with
@@ -110,7 +112,7 @@ module Make (O : Object_intf.S with type value = Encoding.Expr.t) = struct
     let open Fmt in
     let pp_v fmt (key, data) = fprintf fmt "%a: %a" pp_int key O.pp data in
     let pp_parent fmt v =
-      pp_opt (fun fmt h -> fprintf fmt "%a@ <-@ " pp h) fmt v
+      pp_opt (fun fmt h -> fprintf fmt "%a@\n<-@\n" pp h) fmt v
     in
     fprintf fmt "%a{ %a }" pp_parent parent
       (pp_hashtbl ~pp_sep:pp_comma pp_v)

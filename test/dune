@@ -1,3 +1,11 @@
 (tests
- (names test_object_1 test_object_2 test_object_3 test_memory)
+ (names
+  test_object_1
+  test_object_2
+  test_object_3
+  test_memory_1
+  test_memory_2
+  test_memory_3
+  test_memory_4
+  test_memory_loc)
  (libraries memory_models encoding))

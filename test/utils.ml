@@ -14,6 +14,7 @@ let value_str v = Expr.(make @@ Val (Str v))
 let value_int v = Expr.(make @@ Val (Int v))
 let value_bool v = Expr.Bool.v v
 let ite c v1 v2 = Expr.(Bool.ite c v1 v2)
+let and_ = Expr.Bool.and_
 
 let list_is_equal l1 l2 =
   let sort_l1 = List.sort compare l1 in

@@ -30,7 +30,9 @@ let () =
         (ite (eq x x) (value_bool true) (value_bool false)) );
   (* FIXME: (1) *)
   (* Format.printf "[has_field banana]: %a\n\n" Encoding.Expr.pp (Obj.has_field obj banana); *)
-  assert (Obj.has_field obj banana = ite (eq banana x) (value_bool true) (value_bool false));
+  assert (
+    Obj.has_field obj banana
+    = ite (eq banana x) (value_bool true) (value_bool false) );
   assert (
     Obj.has_field obj y
     = ite (eq y foo) (value_bool true)
@@ -43,7 +45,7 @@ let () =
   (* [get x] If x = "foo" then "bar" else "one" *)
   (* Format.printf "[get x]: %a\n\n" (Fmt.pp_lst (fun fmt (a, b) -> Fmt.fprintf fmt "(%a, %a)" Expr.pp a (Fmt.pp_lst Expr.pp) b)) (Obj.get obj x); *)
   assert (
-     Obj.get obj x = [ (val_bar, [ eq x foo ]); (val_one, [ ne (eq x foo) ]) ] );
+    Obj.get obj x = [ (val_bar, [ eq x foo ]); (val_one, [ ne (eq x foo) ]) ] );
   assert (Obj.get obj foo = [ (val_bar, []) ]);
   assert (
     list_is_equal (Obj.get obj banana)
@@ -55,11 +57,11 @@ let () =
   (* [get y] If y = "foo" then "bar" else if y = x then "one" else undef *)
   (* Format.printf "[get y]: \n%a\n\n" (Fmt.pp_lst (fun fmt (a, b) -> Fmt.fprintf fmt "(%a, %a)" Expr.pp a (Fmt.pp_lst Expr.pp) b)) (Obj.get obj y); *)
   assert (
-     list_is_equal (Obj.get obj y)
-       [ (val_bar, [ eq y foo ])
-       ; (val_one, [ ne (eq y foo); eq y x ])
-       ; (undef, [ ne (eq y foo); ne (eq y x) ])
-       ] );
+    list_is_equal (Obj.get obj y)
+      [ (val_bar, [ eq y foo ])
+      ; (val_one, [ ne (eq y foo); eq y x ])
+      ; (undef, [ ne (eq y foo); ne (eq y x) ])
+      ] );
 
   (*********** Symbolic write {y : "two"} ***********)
   (* {
