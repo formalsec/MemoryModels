@@ -183,10 +183,7 @@ let () =
   let _ = Mem.remove m loc1 in
   let _ = Mem.remove m loc3 in
   let _ = Mem.remove m loc5 in
-  (* Format.printf "After Removing:\n %a\n###################\n" Mem.pp m; *)
-  (* FIXME: (1) Since we deleted obj1 from memory, it was expected to return None.
-     What it actually does is removing the object just in the current heap. And then when searching on parents it still exists. *)
-  (* Format.printf "Mem.get loc1 = %a\n" (Fmt.pp_opt Obj.pp) (Mem.get m loc1); *)
+  
   assert (Mem.get m loc1 = None);
   assert (Mem.get m loc2 = Some obj2);
   assert (Mem.get m loc3 = None);

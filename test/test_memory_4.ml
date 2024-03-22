@@ -168,8 +168,6 @@ let () =
   let _ = Mem.remove m loc5 in
   let _ = Mem.remove m loc7 in
   let _ = Mem.remove m loc9 in
-  (* FIXME: (1) Since we deleted obj1 from memory, it was expected to return None.
-     What it actually does is removing the object just in the current heap. And then when searching on parents it still exists. *)
   assert (Mem.get m loc1 = None);
   assert (Mem.get m loc2 = Some obj2);
   assert (Mem.get m loc3 = None);
@@ -181,7 +179,6 @@ let () =
   assert (Mem.get m loc9 = None);
   assert (Mem.get m loc10 = Some obj10);
 
-  (* FIXME: (2) This should be expected to be fix when fixing (1). *)
   assert (Mem.get_field m loc1 (key_c "a") = []);
   assert (Mem.get_field m loc1 (key_c "b") = []);
   assert (Mem.get_field m loc2 (key_c "c") = Obj.get obj2 (key_c "c"));

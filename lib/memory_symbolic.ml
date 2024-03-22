@@ -4,9 +4,13 @@ module Make (O : Object_intf.S with type value = Encoding.Expr.t) = struct
   type value = Encoding.Expr.t
   type object_ = O.t
 
+  type block =
+    | Block of object_
+    | Empty
+
   type t =
     { parent : t option
-    ; map : (int, object_) Hashtbl.t
+    ; map : (int, block) Hashtbl.t
     ; mutable next : int
     }
 
@@ -22,24 +26,25 @@ module Make (O : Object_intf.S with type value = Encoding.Expr.t) = struct
 
   let insert (h : t) (o : object_) : value =
     let next = h.next in
-    Hashtbl.replace h.map next o;
+    Hashtbl.replace h.map next (Block o);
     h.next <- h.next + 1;
     Expr.(make @@ Val (Int next))
 
   let remove (h : t) (l : value) : unit =
     let loc = get_loc l in
-    Hashtbl.remove h.map loc
+    Hashtbl.replace h.map loc Empty
 
   let set ({ map = h; _ } : t) (l : value) (data : object_) : unit =
     let loc = get_loc l in
-    Hashtbl.replace h loc data
+    Hashtbl.replace h loc (Block data)
 
   let find (h : t) (l : value) : (object_ * bool) option =
     let open Utils.Option in
     let loc = get_loc l in
     let rec aux { parent; map; _ } loc from_parent =
       match Hashtbl.find_opt map loc with
-      | Some o -> Some (o, from_parent)
+      | Some Block o -> Some (o, from_parent)
+      | Some Empty -> None
       | None ->
         let* parent in
         aux parent loc true
@@ -110,7 +115,11 @@ module Make (O : Object_intf.S with type value = Encoding.Expr.t) = struct
 
   let rec pp (fmt : Fmt.t) ({ map; parent; _ } : t) =
     let open Fmt in
-    let pp_v fmt (key, data) = fprintf fmt "%a: %a" pp_int key O.pp data in
+    let pp_block fmt = function
+      | Block o -> fprintf fmt "%a" O.pp o
+      | Empty -> fprintf fmt "Empty"
+    in
+    let pp_v fmt (key, data) = fprintf fmt "%a: %a" pp_int key pp_block data in
     let pp_parent fmt v =
       pp_opt (fun fmt h -> fprintf fmt "%a@\n<-@\n" pp h) fmt v
     in
