@@ -1,7 +1,7 @@
 open Utils
 open Memory_models
 module Obj = Object_symbolic.M
-module Mem = Memory_symbolic.M
+module Mem = Memory_symb
 
 (* Test case 3: Working with 5 objects, with 1 parents, where parent has 3 obj and current has 2 obj. *)
 (* Test case 3-1: Setting fields to obj located in parent. *)
@@ -183,7 +183,7 @@ let () =
   let _ = Mem.remove m loc1 in
   let _ = Mem.remove m loc3 in
   let _ = Mem.remove m loc5 in
-  
+
   assert (Mem.get m loc1 = None);
   assert (Mem.get m loc2 = Some obj2);
   assert (Mem.get m loc3 = None);

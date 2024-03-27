@@ -1,6 +1,6 @@
 open Utils
 open Memory_models
-module Mem = Memory_symbolic
+module Mem = Memory_symb
 
 (* Test loc function *)
 let () =

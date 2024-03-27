@@ -6,7 +6,7 @@ module type S = sig
   val create : unit -> t
   val clone : t -> t
 
-  (** [insert m o] inserts the object [o] into memory [m] and returns its
+  (** [insert m o ] inserts the object [o] into memory [m] and returns its
       location. *)
   val insert : t -> object_ -> value
 
@@ -19,21 +19,21 @@ module type S = sig
   (** [get m l o] get the object at location [l] in memory [m]. *)
   val get : t -> value -> object_ option
 
-  (** [set_field m l ~field ~data] sets the field [field] of the object at
+  (** [set_field m l ~field ~data pc] sets the field [field] of the object at
       location [l] in memory [m] to [data]. *)
-  val set_field : t -> value -> field:value -> data:value -> unit
+  val set_field : t -> value -> field:value -> data:value -> value -> unit
 
-  (** [get_field m l field] gets the value stored at field [field] of the object
-      at location [l] in memory [m]. *)
-  val get_field : t -> value -> value -> (value * value list) list
+  (** [get_field m l field pc] gets the value stored at field [field] of the
+      object at location [l] in memory [m]. *)
+  val get_field : t -> value -> value -> value -> (value * value list) list
 
-  (** [has_field m l field] checks if an object at location [l] in memory [m]
+  (** [has_field m l field pc] checks if an object at location [l] in memory [m]
       has a field [field]. *)
-  val has_field : t -> value -> value -> value
+  val has_field : t -> value -> value -> value -> value
 
-  (** [delete_field m l field] deletes field [field] from object at location [l]
-      in memory [m]. *)
-  val delete_field : t -> value -> value -> unit
+  (** [delete_field m l field pc] deletes field [field] from object at location
+      [l] in memory [m]. *)
+  val delete_field : t -> value -> value -> value -> unit
 
   val loc : value -> ((value option * int) list, string) Result.t
   val pp : Fmt.t -> t -> unit

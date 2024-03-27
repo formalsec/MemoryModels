@@ -1,6 +1,6 @@
 open Utils
 open Memory_models
-module Obj = Object_symbolic.M
+module Obj = Object_mwl.M
 
 (* Test case 2: Object with 1 concrete field followed by 1 symbolic field *)
 let () =
@@ -12,104 +12,73 @@ let () =
   let val_200 = value_int 200 in
   let val_300 = value_int 300 in
   let val_400 = value_int 400 in
+  let pc = value_bool true in
 
   (*********** Create object {"foo": 100} ***********)
   let obj = Obj.create () in
-  let obj = Obj.set obj ~key:foo ~data:val_100 in
+  let obj, pc = get_obj (Obj.set obj ~field:foo ~data:val_100 pc) in
   assert (list_is_equal (Obj.to_list obj) [ (foo, val_100) ]);
   assert (list_is_equal (Obj.get_fields obj) [ foo ]);
 
-  (*********** Symbolic write {x : 200} -> {"foo": ite(x = "foo", 200, 100); x : 200} ***********)
-  let obj = Obj.set obj ~key:x ~data:val_200 in
-  assert (
-    list_is_equal (Obj.to_list obj)
-      [ (foo, ite (eq x foo) val_200 val_100); (x, val_200) ] );
+  (*********** Symbolic write {x : 200} -> {} ; {"foo": 100; x : 200}  ***********)
+  let obj, pc = get_obj (Obj.set obj ~field:x ~data:val_200 pc) in
+  assert (list_is_equal (Obj.to_list obj) [ (foo, val_100); (x, val_200) ]);
   assert (list_is_equal (Obj.get_fields obj) [ foo; x ]);
-  assert (Obj.has_field obj foo = value_bool true);
   assert (
-    Obj.has_field obj x
-    = ite (eq x foo) (value_bool true)
-        (ite (eq x x) (value_bool true) (value_bool false)) );
-  (* FIXME: (1) *)
-  (* Format.printf "[has_field banana]: %a\n\n" Encoding.Expr.pp (Obj.has_field obj banana); *)
+    Obj.has_field obj foo pc
+    = ite (eq foo x) (value_bool true) (value_bool true) );
+  assert (Obj.has_field obj x pc = value_bool true);
   assert (
-    Obj.has_field obj banana
+    Obj.has_field obj banana pc
     = ite (eq banana x) (value_bool true) (value_bool false) );
   assert (
-    Obj.has_field obj y
-    = ite (eq y foo) (value_bool true)
-        (ite (eq y x) (value_bool true) (value_bool false)) );
-  assert (Obj.get obj foo = [ (ite (eq x foo) val_200 val_100, []) ]);
-  assert (Obj.get obj x = [ (val_200, []) ]);
+    Obj.has_field obj y pc
+    = ite (eq y x) (value_bool true)
+        (ite (eq y foo) (value_bool true) (value_bool false)) );
+  assert (Obj.get obj foo pc = [(ite (eq foo x) val_200 val_100, pc)]);
+  assert (Obj.get obj x pc = [(val_200, pc)]);
   (* [get "banana"] If "banana" = x then 200 else undef *)
-  assert (
-    list_is_equal (Obj.get obj banana)
-      [ (val_200, [ eq banana x ]); (undef, [ ne (eq banana x) ]) ] );
-
-  (* FIXME: (2) [get] when receiving a symbolic field that does not exists in object, just take into consideration the concrete table,
-      does not take into consideration the symbolic fields that the object already has. After fix, note that the conditions is a list,
-     so it might not be in this order *)
+  assert (Obj.get obj banana pc = [(ite (eq banana x) val_200 undef, pc)]);
   (* [get y] If y = "foo" then ite(x = "foo", "bar", 100) else if y = x then "bar" else undef *)
-  (* Format.printf "[get y]: %a\n\n" (Fmt.pp_lst (fun fmt (a, b) -> Fmt.fprintf fmt "(%a, %a)" Expr.pp a (Fmt.pp_lst Expr.pp) b)) (Obj.get obj y); *)
-  assert (
-    list_is_equal (Obj.get obj y)
-      [ (ite (eq x foo) val_200 val_100, [ eq y foo ])
-      ; (val_200, [ ne (eq y foo); eq y x ])
-      ; (undef, [ ne (eq y foo); ne (eq y x) ])
-      ] );
+  assert (Obj.get obj y pc = [(ite (eq y x) val_200 (ite (eq y foo) val_100 undef), pc)]);
 
-  (*********** Concrete write {"banana" : 300} -> {"foo": ite(x = "foo", 200, 100); x : 200; "banana" : 300} ***********)
-  let obj = Obj.set obj ~key:banana ~data:val_300 in
-  assert (Obj.has_field obj foo = value_bool true);
-  assert (Obj.has_field obj banana = value_bool true);
-  (* [has_field x] If x = foo then true else if x = banana then true else if x = x then true else false *)
+  (*********** Concrete write {"banana" : 300} -> {"banana" : 300} ; {"foo": 100; x : 200} ***********)
+  let obj, pc = get_obj (Obj.set obj ~field:banana ~data:val_300 pc) in
   assert (
-    Obj.has_field obj x
-    = ite (eq x foo) (value_bool true)
-        (ite (eq x banana) (value_bool true)
-           (ite (eq x x) (value_bool true) (value_bool false)) ) );
-  (* [has_field y] If y = foo then true else if y = banana then true else if y = x then true else false *)
+    Obj.has_field obj foo pc
+    = ite (eq foo x) (value_bool true) (value_bool true) );
+  assert (Obj.has_field obj banana pc = value_bool true);
+  (* FIXME: To check: [has_field x] Será que isto faz sentido? deverá ter o caso do x=foo? *)
   assert (
-    Obj.has_field obj y
-    = ite (eq y foo) (value_bool true)
-        (ite (eq y banana) (value_bool true)
-           (ite (eq y x) (value_bool true) (value_bool false)) ) );
-  assert (Obj.get obj foo = [ (ite (eq x foo) val_200 val_100, []) ]);
-  assert (Obj.get obj banana = [ (val_300, []) ]);
-  (* [get x] 200 *)
-  assert (Obj.get obj x = [ (val_200, []) ]);
-  (* FIXME:
-     (2)
-     (3) the ite that it gets from the concrete table is not coerent. It outputs an expression without condition of
-     ite(y = banana, 300, ite(x=foo, 300, 100)), but on the else branch it does not means that y=foo, we can just say that y != banana*)
-  (* Format.printf "[get y]: %a\n\n" (Fmt.pp_lst (fun fmt (a, b) -> Fmt.fprintf fmt "(%a, %a)" Encoding.Expr.pp a (Fmt.pp_lst Encoding.Expr.pp) b)) (Obj.get obj y); *)
+    Obj.has_field obj x pc
+    = ite (eq x banana) (value_bool true) (value_bool true) );
+  (* [has_field y] If y = banana then true else if y = x then true else if y = foo then true else false *)
+  assert (
+    Obj.has_field obj y pc
+    = ite (eq y banana) (value_bool true)
+        (ite (eq y x) (value_bool true)
+           (ite (eq y foo) (value_bool true) (value_bool false)) ) );
+  assert (Obj.get obj foo pc = [(ite (eq foo x) val_200 val_100, pc)]);
+  assert (Obj.get obj banana pc = [(val_300, pc)]);
+  (* [get x] If x = banana then 300 else 200 *)
+  assert (Obj.get obj x pc = [(ite (eq x banana) val_300 val_200, pc)]);
   (* [get y] if y = foo then ite(x = "foo", 200, 100) else if y = banana then 300 else if y = x then 200 else undef *)
   assert (
-    list_is_equal (Obj.get obj y)
-      [ (ite (eq x foo) val_200 val_100, [ eq y foo ])
-      ; (val_300, [ ne (eq y foo); eq y banana ])
-      ; (val_200, [ ne (eq y foo); ne (eq y banana); eq y x ])
-      ; (undef, [ ne (eq y foo); ne (eq y x) ])
-      ] );
+    Obj.get obj y pc
+    = [(ite (eq y banana) val_300
+        (ite (eq y x) val_200 (ite (eq y foo) val_100 undef)) , pc)]);
 
   (*********** Symbolic write {y : 400} ***********)
-  (* {
-       "foo"  : ite(y = "foo", 400, ite(x = "foo", 200, 100));
-         x    : ite(y = x, 400, 200);
-     "banana" : ite(y = "banana", 400, 300);
-         y    : 400} *)
-  let obj = Obj.set obj ~key:y ~data:val_400 in
+  (* {"banana" : 300}; y : 400 ;
+     {"foo": 100; x : 200} *)
+  let obj, pc = get_obj (Obj.set obj ~field:y ~data:val_400 pc) in
   assert (list_is_equal (Obj.get_fields obj) [ foo; x; banana; y ]);
   assert (
     list_is_equal (Obj.to_list obj)
-      [ (foo, ite (eq y foo) val_400 (ite (eq x foo) val_200 val_100))
-      ; (x, ite (eq y x) val_400 val_200)
-      ; (banana, ite (eq y banana) val_400 val_300)
-      ; (y, val_400)
-      ] );
+      [ (foo, val_100); (x, val_200); (banana, val_300); (y, val_400) ] );
   assert (
-    Obj.get obj foo
-    = [ (ite (eq y foo) val_400 (ite (eq x foo) val_200 val_100), []) ] );
-  assert (Obj.get obj x = [ (ite (eq y x) val_400 val_200, []) ]);
-  assert (Obj.get obj banana = [ (ite (eq y banana) val_400 val_300, []) ]);
-  assert (Obj.get obj y = [ (val_400, []) ])
+    Obj.get obj foo pc = [(ite (eq foo y) val_400 (ite (eq foo x) val_200 val_100) , pc)]);
+  assert (
+    Obj.get obj x pc = [(ite (eq x y) val_400 (ite (eq x banana) val_300 val_200) , pc)]);
+  assert (Obj.get obj banana pc = [(ite (eq banana y) val_400 val_300, pc)]);
+  assert (Obj.get obj y pc = [(val_400, pc)]);

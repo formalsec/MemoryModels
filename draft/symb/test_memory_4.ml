@@ -1,7 +1,7 @@
 open Utils
 open Memory_models
 module Obj = Object_symbolic.M
-module Mem = Memory_symbolic.M
+module Mem = Memory_symb
 
 (* Test case 4: Working with 10 objects, with 4 parents, where each parent have 2 obj stored. *)
 (* Test case 4-1: Setting fields to obj located in parent. *)

@@ -31,3 +31,4 @@ let pp_opt (pp_el : t -> 'a -> unit) (fmt : t) (el : 'a option) =
 
 let pp_newline fmt () = fprintf fmt "@\n"
 let pp_comma fmt () = pp_print_string fmt ", "
+let pp_semicolon fmt () = fprintf fmt ";@\n"

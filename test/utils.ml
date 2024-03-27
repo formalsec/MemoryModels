@@ -1,6 +1,4 @@
-open Memory_models
 open Encoding
-module Obj = Object_symbolic.M
 
 let eq v1 v2 =
   (* Just accepts v1 and v2 of type int *)
@@ -16,20 +14,28 @@ let value_bool v = Expr.Bool.v v
 let ite c v1 v2 = Expr.(Bool.ite c v1 v2)
 let and_ = Expr.Bool.and_
 
+let print_get (field : Encoding.Expr.t) (expr : Encoding.Expr.t) =
+  ignore field;
+  ignore expr;
+  Format.printf "---- get %a : %a ----\n" Encoding.Expr.pp field
+    Encoding.Expr.pp expr
+(* ;Format.printf "---- get %a : %a ----\n"
+   Encoding.Expr.pp field
+     (Fmt.pp_lst ~pp_sep:Fmt.pp_semicolon (fun fmt (k, v) ->
+          Format.fprintf fmt "(%a, %a)" Encoding.Expr.pp k Encoding.Expr.pp v )
+     )
+     l *)
+
+let print_obj pp_obj obj =
+  Format.printf "\n--------\n    obj \n--------\n\n%a \n" pp_obj obj
+
+let get_obj l =
+  match l with
+  | [] -> failwith "empty list"
+  | [ x ] -> x
+  | _ :: _ -> failwith "more than one element"
+
 let list_is_equal l1 l2 =
   let sort_l1 = List.sort compare l1 in
   let sort_l2 = List.sort compare l2 in
   sort_l1 = sort_l2
-
-(* Create an object with n concrete fields *)
-let _creat_obj_c (n : int) : Obj.t =
-  let obj = Obj.create () in
-  let rec set_fields obj count =
-    if count <= n then
-      let key = key_c (string_of_int count) in
-      let data = value_int (count + 100000) in
-      let obj' = Obj.set obj ~key ~data in
-      set_fields obj' (count + 1)
-    else obj
-  in
-  set_fields obj 1

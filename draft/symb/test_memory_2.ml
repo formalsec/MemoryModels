@@ -1,7 +1,7 @@
 open Utils
 open Memory_models
 module Obj = Object_symbolic.M
-module Mem = Memory_symbolic.M
+module Mem = Memory_symb
 
 (* Test case 2: Working with 5 objects *)
 let () =
