@@ -1,10 +1,12 @@
 open Utils.Encoding
 open Encoding
 
-module M : Object_intf.S with type value = Encoding.Expr.t and type pc_value = Encoding.Expr.t = struct
+module M :
+  Object_intf.S
+    with type value = Encoding.Expr.t
+     and type pc_value = Encoding.Expr.t = struct
   type value = Encoding.Expr.t
   type pc_value = Encoding.Expr.t
-
   type symb_slot = (value * value option) option
   type concrete_table = (string, value option) Hashtbl.t
 
@@ -59,7 +61,7 @@ module M : Object_intf.S with type value = Encoding.Expr.t and type pc_value = E
       Possible problems/TODO:
       - after deleting a field, does this function return the correct value?
       - what happen when there is several records with the same field? will it, should it return everything?
-        - maybe it is solves with the final value that is passed
+        - maybe it is solved with the final value that is passed
   *)
   let get_aux_rec (r : record) (field : value) (pc : pc_value)
     (get_val : value option -> value) :
@@ -106,8 +108,8 @@ module M : Object_intf.S with type value = Encoding.Expr.t and type pc_value = E
   *)
 
   let rec get_prop ?(default_val : value = undef) (o : t option) (field : value)
-    (pc : pc_value) (acc : (value * value) list) (get_val : value option -> value)
-    : (value * value) list * value =
+    (pc : pc_value) (acc : (value * value) list)
+    (get_val : value option -> value) : (value * value) list * value =
     match o with
     | Some { record; parent } -> (
       let lst, final_val = get_aux_rec record field pc get_val in
@@ -146,7 +148,7 @@ module M : Object_intf.S with type value = Encoding.Expr.t and type pc_value = E
       (fun acc (v, cond) -> if Expr.equal v undef then acc else ite cond v acc)
       final_val conds
 
-  let get (o : t) (field : value) (pc : pc_value) : (value * value) list=
+  let get (o : t) (field : value) (pc : pc_value) : (value * value) list =
     (* Format.printf "\n----------\nget_prop %a: \n" Expr.pp field; *)
     let get_v v = match v with None -> undef | Some v -> v in
     let l, v = get_prop (Some o) field pc [] get_v in
@@ -156,7 +158,7 @@ module M : Object_intf.S with type value = Encoding.Expr.t and type pc_value = E
               Format.fprintf fmt "(%a, %a)" Expr.pp a Expr.pp b ) )
          l Expr.pp v;
        Format.printf "ITE: %a\n----------\n" Expr.pp ite_expr; *)
-    [(ite_expr, pc)]
+    [ (ite_expr, pc) ]
 
   let delete (o : t) (field : value) (pc : pc_value) : (t * value) list =
     match Expr.view field with
@@ -172,28 +174,16 @@ module M : Object_intf.S with type value = Encoding.Expr.t and type pc_value = E
       [ ({ record = empty_record; parent = Some new_o }, pc) ]
 
   let to_list (o : t) : (value * value) list =
-    (* FIXME: Does not consider when there repeated fields in the current record and in the parent record.
-       What should it do? I think that it supposed to just output one for key*)
-    let rec aux { record; parent } acc =
-      let concrete_list =
-        Hashtbl.fold
-          (fun k v acc ->
-            match v with Some v -> (str k, v) :: acc | None -> acc )
-          record.concrete acc
-      in
-      let symbolic_list =
-        match record.symbolic with
-        | None -> []
-        | Some (k, v) -> if Option.is_none v then [] else [ (k, Option.get v) ]
-      in
-      match parent with
-      | None -> symbolic_list @ concrete_list
-      | Some p -> aux p (symbolic_list @ concrete_list)
-    in
-    aux o []
+    (* Just calculates if there is no symbolic values *)
+    match o.parent with
+    | Some _ -> assert false
+    | None ->
+      Hashtbl.fold
+        (fun k v acc -> match v with Some v -> (str k, v) :: acc | None -> acc)
+        o.record.concrete []
 
   let get_fields (o : t) : value list =
-    (* FIXME: Does not consider when there repeated fields in the current record and in the parent record. *)
+    (* TODO: Just calculates if max 2 records *)
     let rec aux { record; parent } acc =
       let concrete_list =
         Hashtbl.fold
