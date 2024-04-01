@@ -67,8 +67,6 @@ let () =
 
   (*********** Delete field x -> {x : None}; {"foo": None; x : 200} -> Empty object ***********)
   let obj, pc = get_obj (Obj.delete obj x pc) in
-  (* FIXME: (2) When there are fields stored in several records and it was deleted, it does not take into consideration *)
-  (* assert (Obj.is_empty obj); *)
   (* FIXME: (4) When there are fields stored in several records and it was deleted, it does not take into consideration *)
   (* Format.printf "get_fields: %a\n" (Fmt.pp_lst Encoding.Expr.pp) (Obj.get_fields obj); *)
   (* assert (Obj.get_fields obj = []); *)

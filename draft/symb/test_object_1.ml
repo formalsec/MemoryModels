@@ -11,7 +11,6 @@ let () =
 
   (*********** Create an empty object ***********)
   let obj = Obj.create () in
-  assert (Obj.is_empty obj);
   assert (Obj.to_list obj = []);
   assert (Obj.get_fields obj = []);
   assert (Obj.has_field obj foo = value_bool false);
@@ -23,7 +22,6 @@ let () =
   (*********** Concrete write {"foo": 100} ***********)
   let val_100 = value_int 100 in
   let obj = Obj.set obj ~key:foo ~data:val_100 in
-  assert (not (Obj.is_empty obj));
   assert (Obj.to_list obj = [ (foo, val_100) ]);
   assert (Obj.get_fields obj = [ foo ]);
   assert (Obj.has_field obj foo = value_bool true);
@@ -40,7 +38,6 @@ let () =
 
   (*********** Delete field foo -> Empty object ***********)
   let obj = Obj.delete obj foo in
-  assert (Obj.is_empty obj);
   assert (Obj.to_list obj = []);
   assert (Obj.get_fields obj = []);
   assert (Obj.has_field obj foo = value_bool false);
@@ -52,7 +49,6 @@ let () =
   (*********** Symbolic write {x : 200} ***********)
   let val_200 = value_int 200 in
   let obj = Obj.set obj ~key:x ~data:val_200 in
-  assert (not (Obj.is_empty obj));
   assert (Obj.to_list obj = [ (x, val_200) ]);
   assert (Obj.get_fields obj = [ x ]);
   (* FIXME: (1) [has_field] when receiving a concrete field just search in the concrete table, does not take consideration

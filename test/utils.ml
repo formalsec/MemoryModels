@@ -1,5 +1,5 @@
 open Encoding
-
+open Memory_models
 let eq v1 v2 =
   (* Just accepts v1 and v2 of type int *)
   Expr.(relop Ty.Ty_int Ty.Eq v1 v2)
@@ -14,17 +14,16 @@ let value_bool v = Expr.Bool.v v
 let ite c v1 v2 = Expr.(Bool.ite c v1 v2)
 let and_ = Expr.Bool.and_
 
-let print_get (field : Encoding.Expr.t) (expr : Encoding.Expr.t) =
+let print_get (field : Encoding.Expr.t) l(* (expr : Encoding.Expr.t) *) =
   ignore field;
-  ignore expr;
-  Format.printf "---- get %a : %a ----\n" Encoding.Expr.pp field
-    Encoding.Expr.pp expr
-(* ;Format.printf "---- get %a : %a ----\n"
+  (* Format.printf "---- get %a : %a ----\n" Encoding.Expr.pp field
+    Encoding.Expr.pp expr *)
+Format.printf "---- get %a : %a ----\n"
    Encoding.Expr.pp field
      (Fmt.pp_lst ~pp_sep:Fmt.pp_semicolon (fun fmt (k, v) ->
           Format.fprintf fmt "(%a, %a)" Encoding.Expr.pp k Encoding.Expr.pp v )
      )
-     l *)
+     l
 
 let print_obj pp_obj obj =
   Format.printf "\n--------\n    obj \n--------\n\n%a \n" pp_obj obj

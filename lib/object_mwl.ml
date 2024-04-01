@@ -16,32 +16,32 @@ module M :
     }
 
   type t =
-    { record : record
+    { cur : record
     ; parent : t option
     }
 
   let create_record () : record =
     { concrete = Hashtbl.create 16; symbolic = None }
 
-  let create () : t = { record = create_record (); parent = None }
+  let create () : t = { cur = create_record (); parent = None }
 
   let clone (o : t) : t =
     let new_rec = create_record () in
-    { record = new_rec; parent = Some o }
+    { cur = new_rec; parent = Some o }
 
   let set (o : t) ~(field : value) ~(data : value) (pc : pc_value) :
-    (t * value) list =
+    (t * pc_value) list =
     match Expr.view field with
     (* Concrete *)
     | Val (Str field) ->
-      Hashtbl.replace o.record.concrete field (Some data);
+      Hashtbl.replace o.cur.concrete field (Some data);
       [ (o, pc) ]
     (* Symbolic *)
     | _ ->
-      let new_record = { o.record with symbolic = Some (field, Some data) } in
-      let new_o = { o with record = new_record } in
+      let new_record = { o.cur with symbolic = Some (field, Some data) } in
+      let new_o = { o with cur = new_record } in
       let empty_record = create_record () in
-      [ ({ record = empty_record; parent = Some new_o }, pc) ]
+      [ ({ cur = empty_record; parent = Some new_o }, pc) ]
 
   (* Auxiliar function: [get_aux_rec r field pc get_val] gets all possible values from a record.
        It returns a list of (value, condition) and a final value (the direct binding if encounter in this record).
@@ -111,8 +111,8 @@ module M :
     (pc : pc_value) (acc : (value * value) list)
     (get_val : value option -> value) : (value * value) list * value =
     match o with
-    | Some { record; parent } -> (
-      let lst, final_val = get_aux_rec record field pc get_val in
+    | Some { cur; parent } -> (
+      let lst, final_val = get_aux_rec cur field pc get_val in
       match (lst, final_val) with
       (* Only found the final value *)
       | [], Some v ->
@@ -148,50 +148,103 @@ module M :
       (fun acc (v, cond) -> if Expr.equal v undef then acc else ite cond v acc)
       final_val conds
 
-  let get (o : t) (field : value) (pc : pc_value) : (value * value) list =
-    (* Format.printf "\n----------\nget_prop %a: \n" Expr.pp field; *)
-    let get_v v = match v with None -> undef | Some v -> v in
-    let l, v = get_prop (Some o) field pc [] get_v in
-    let ite_expr = mk_ite l v in
-    (* Format.printf "\nget_prop %a: (%a; %a)\n" Expr.pp field
-         (Fmt.pp_lst ~pp_sep:Fmt.pp_comma (fun fmt (a, b) ->
-              Format.fprintf fmt "(%a, %a)" Expr.pp a Expr.pp b ) )
-         l Expr.pp v;
-       Format.printf "ITE: %a\n----------\n" Expr.pp ite_expr; *)
-    [ (ite_expr, pc) ]
+  let make_ite (conds : (pc_value * value option) list) : value =
+    List.fold_right
+      (fun (cond, v) acc -> match v with None -> acc | Some v -> ite cond v acc)
+      conds undef
+  
+  let get_concrete (concrete : concrete_table) (pc: pc_value) (p: value) : (pc_value option * (pc_value * value option) list )=
+    let find_opt = Hashtbl.find_opt concrete in
+    let find = Hashtbl.find concrete in
 
-  let delete (o : t) (field : value) (pc : pc_value) : (t * value) list =
+    match Expr.view p with
+    | Val (Str s) -> 
+      (let v = find_opt s in
+      match v with
+      | Some v' -> (None, [boolean true, v'])
+      | _ -> (Some (boolean true), []))
+    | _ ->
+      let keys = Hashtbl.keys concrete in
+      let keys' = List.filter (fun k -> is_sat [eq p (str k); pc]) keys in
+      match keys' with
+      | [ k ] -> (Some (ne p (str k)), [(eq p (str k)), find k])
+      | _ -> (Some (List.fold_right (fun k acc -> Expr.Bool.and_ acc (ne p (str k))) keys' (boolean true) ), List.map (fun k -> (eq p (str k), find k)) keys')
+
+    
+    let get_record ({concrete; symbolic} : record) (pc : pc_value) (p : value) :  (pc_value option * (pc_value * value option) list )  =
+      let get_concrete = get_concrete concrete pc in
+
+      match symbolic with
+      | Some (p', v) -> 
+        (* symbolic exists *)
+        (* FIXME: 
+           se pc = true, p = banana, p = x => entra aqui neste if, mas não era suposto *)
+        (* if (pc => (eq p p')) then  *)
+        if Expr.equal p p' then 
+          (None, [(boolean true, v)])
+        else if (is_sat [pc; eq p p']) then
+          let (b, pvs) = get_concrete p in
+          let new_b = 
+            match b with 
+          | Some b -> Some (Expr.Bool.and_ b (ne p p')) 
+          | None -> Some (ne p p')
+          in
+          (new_b, (eq p p', v) :: pvs)
+        else
+          get_concrete p
+        | None -> get_concrete p
+
+
+    let rec get_aux (p : value) (pc:pc_value) ((r, pvs) :  pc_value option * (pc_value * value option) list) {cur ; parent} : (pc_value * value option) list  =
+      let open Utils.Option in
+      let r = match r with Some r -> r | None -> boolean true in
+      let (r', pvs') = get_record cur r p in 
+      let pvs'' = pvs @ pvs' in
+      match r' with 
+      | None -> pvs''
+      | Some b -> map_default (get_aux p pc (Some (Expr.Bool.and_ r b),pvs'')) pvs'' parent
+
+    let get (o : t) (field : value) (pc : pc_value) : (value * pc_value) list =
+      let l = get_aux field pc (None, []) o in 
+      let ite_expr = make_ite l in 
+      (* Format.printf "\n----------\nget %a: %a\n\n ite: %a----------\n \n" 
+      Expr.pp field 
+      (Fmt.pp_lst ~pp_sep:Fmt.pp_semicolon (fun fmt (v, pc) -> Fmt.fprintf fmt "(%a, %a)" Expr.pp v  Expr.pp (Option.value pc ~default:(boolean true)))) l
+      Expr.pp ite_expr; *)
+      [(ite_expr, pc)]
+
+  let delete (o : t) (field : value) (pc : pc_value) : (t * pc_value) list =
     match Expr.view field with
     (* Concrete *)
     | Val (Str field) ->
-      Hashtbl.replace o.record.concrete field None;
+      Hashtbl.replace o.cur.concrete field None;
       [ (o, pc) ]
     (* Symbolic *)
     | _ ->
-      let new_record = { o.record with symbolic = Some (field, None) } in
-      let new_o = { o with record = new_record } in
+      let new_record = { o.cur with symbolic = Some (field, None) } in
+      let new_o = { o with cur = new_record } in
       let empty_record = create_record () in
-      [ ({ record = empty_record; parent = Some new_o }, pc) ]
+      [ ({ cur = empty_record; parent = Some new_o }, pc) ]
 
   let to_list (o : t) : (value * value) list =
-    (* Just calculates if there is no symbolic values *)
+    (* Just calculates if there are just concrete fields *)
     match o.parent with
     | Some _ -> assert false
     | None ->
       Hashtbl.fold
         (fun k v acc -> match v with Some v -> (str k, v) :: acc | None -> acc)
-        o.record.concrete []
+        o.cur.concrete []
 
   let get_fields (o : t) : value list =
-    (* TODO: Just calculates if max 2 records *)
-    let rec aux { record; parent } acc =
+    (* Just calculates if there are just concrete fields *)
+    let rec aux { cur; parent } acc =
       let concrete_list =
         Hashtbl.fold
           (fun k v acc -> match v with Some _ -> str k :: acc | None -> acc)
-          record.concrete acc
+          cur.concrete acc
       in
       let symbolic_list =
-        match record.symbolic with
+        match cur.symbolic with
         | None -> []
         | Some (k, v) -> if Option.is_none v then [] else [ k ]
       in
@@ -210,7 +263,7 @@ module M :
     (* Format.printf "Has_field %a : %a\n" Expr.pp field Expr.pp ite_expr; *)
     ite_expr
 
-  let rec pp (fmt : Fmt.t) ({ record; parent } : t) : unit =
+  let rec pp (fmt : Fmt.t) ({ cur; parent } : t) : unit =
     let open Fmt in
     let pp_v fmt (field, data) =
       fprintf fmt "%a: %a" pp_str field (pp_opt Expr.pp) data
@@ -225,7 +278,7 @@ module M :
       pp_opt (fun fmt h -> fprintf fmt "%a@\n<-@\n" pp h) fmt v
     in
     fprintf fmt "%a{@\n- Concrete table:@\n{%a}@\n- Symbolic slot: %a }"
-      pp_parent parent pp_concrete record.concrete pp_symbolic record.symbolic
+      pp_parent parent pp_concrete cur.concrete pp_symbolic cur.symbolic
 
   let to_string (o : t) : string = Fmt.asprintf "%a" pp o
   let to_json = to_string
