@@ -4,7 +4,7 @@ let eq v1 v2 =
   (* Just accepts v1 and v2 of type int *)
   Expr.(relop Ty.Ty_int Ty.Eq v1 v2)
 
-let ne cond = Expr.(unop Ty.Ty_bool Ty.Not cond)
+let ne v1 v2 = Expr.(unop Ty.Ty_bool Ty.Not (eq v1 v2))
 let undef = Expr.(make @@ Symbol Symbol.("undefined" @: Ty.Ty_str))
 let key_c str = Expr.(make @@ Val (Str str))
 let key_s str = Expr.(make @@ Symbol Symbol.(str @: Ty.Ty_str))

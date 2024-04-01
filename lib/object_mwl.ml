@@ -95,7 +95,7 @@ module M :
       in
       (lst, v)
 
-  (* Auxiliar function: [get_prop o field pc acc get_val] transverse the object to get every possible value of the given field.
+  (* Auxiliar function: [_get_prop o field pc acc get_val] transverse the object to get every possible value of the given field.
       It returns a list of (value, condition) and a final value (the direct binding if encounter in this record).
      Idea: (For every record)
      1. get the values form the record (applying get_aux_rec)
@@ -107,7 +107,7 @@ module M :
          else return (TODO: why do we add the tl to the acc?)
   *)
 
-  let rec get_prop ?(default_val : value = undef) (o : t option) (field : value)
+  let rec _get_prop ?(default_val : value = undef) (o : t option) (field : value)
     (pc : pc_value) (acc : (value * value) list)
     (get_val : value option -> value) : (value * value) list * value =
     match o with
@@ -125,7 +125,7 @@ module M :
       (* Found nothing in this record *)
       | [], None ->
         (* Format.printf "([],  None)\n"; *)
-        get_prop ~default_val parent field pc acc get_val
+        _get_prop ~default_val parent field pc acc get_val
       (* Field is symbolic and there is nothing in the record *)
       | ((v, _) :: tl as l), None ->
         let new_pc =
@@ -138,15 +138,14 @@ module M :
         in
         if is_sat [ new_pc; pc ] then
           let new_pc = Expr.Bool.and_ pc new_pc in
-          get_prop ~default_val parent field new_pc (l @ acc) get_val
+          _get_prop ~default_val parent field new_pc (l @ acc) get_val
         else (tl @ acc, v) )
     | None -> (acc, default_val)
 
-  (* If there is a undef, then ignore and do not put in the ite *)
-  let mk_ite (conds : (value * value) list) (final_val : value) : value =
-    List.fold_left
-      (fun acc (v, cond) -> if Expr.equal v undef then acc else ite cond v acc)
-      final_val conds
+  let mk_ite (conds : (pc_value * value option) list) : value =
+    List.fold_right
+      (fun (cond, v) acc -> match v with None -> acc | Some _ -> ite cond (boolean true) acc)
+      conds (boolean false)
 
   let make_ite (conds : (pc_value * value option) list) : value =
     List.fold_right
@@ -198,7 +197,7 @@ module M :
     let rec get_aux (p : value) (pc:pc_value) ((r, pvs) :  pc_value option * (pc_value * value option) list) {cur ; parent} : (pc_value * value option) list  =
       let open Utils.Option in
       let r = match r with Some r -> r | None -> boolean true in
-      let (r', pvs') = get_record cur r p in 
+      let (r', pvs') = get_record cur (Expr.Bool.and_ pc r) p in 
       let pvs'' = pvs @ pvs' in
       match r' with 
       | None -> pvs''
@@ -209,7 +208,7 @@ module M :
       let ite_expr = make_ite l in 
       (* Format.printf "\n----------\nget %a: %a\n\n ite: %a----------\n \n" 
       Expr.pp field 
-      (Fmt.pp_lst ~pp_sep:Fmt.pp_semicolon (fun fmt (v, pc) -> Fmt.fprintf fmt "(%a, %a)" Expr.pp v  Expr.pp (Option.value pc ~default:(boolean true)))) l
+      (Fmt.pp_lst ~pp_sep:Fmt.pp_semicolon (fun fmt (pc, v) -> Fmt.fprintf fmt "(%a, %a)" Expr.pp pc  Expr.pp (Option.value v ~default:(undef)))) l
       Expr.pp ite_expr; *)
       [(ite_expr, pc)]
 
@@ -255,11 +254,12 @@ module M :
     aux o []
 
   let has_field (o : t) (field : value) (pc : pc_value) : value =
-    let get_v v = match v with None -> boolean false | _ -> boolean true in
-    let l, v =
-      get_prop ~default_val:(boolean false) (Some o) field pc [] get_v
-    in
-    let ite_expr = mk_ite l v in
+    let l = get_aux field pc (None, []) o in 
+    let ite_expr = mk_ite l in
+    (* Format.printf "\n----------\nhas_field %a: %a\n\n ite: %a----------\n \n" 
+      Expr.pp field 
+      (Fmt.pp_lst ~pp_sep:Fmt.pp_semicolon (fun fmt (pc, v) -> Fmt.fprintf fmt "(%a, %a)" Expr.pp pc  Expr.pp (Option.value v ~default:(undef)))) l
+      Expr.pp ite_expr; *)
     (* Format.printf "Has_field %a : %a\n" Expr.pp field Expr.pp ite_expr; *)
     ite_expr
 
