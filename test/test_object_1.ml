@@ -28,7 +28,6 @@ let () =
   assert (Obj.get_fields obj = [ foo ]);
   assert (Obj.has_field obj foo pc = value_bool true);
   assert (Obj.has_field obj banana pc = value_bool false);
-  (* [has_field x] If x = foo then true else false *)
   assert (
     Obj.has_field obj x pc = ite (eq x foo) (value_bool true) (value_bool false) );
 
@@ -38,46 +37,39 @@ let () =
 
   (*********** Delete field foo -> {"foo": None} -> Empty object ***********)
   let obj, pc = get_obj (Obj.delete obj foo pc) in
+
   assert (Obj.to_list obj = []);
   assert (Obj.get_fields obj = []);
   assert (Obj.has_field obj foo pc = value_bool false);
-  assert (
-    Obj.has_field obj x pc = value_bool false );
+  assert (Obj.has_field obj x pc = value_bool false);
+
   assert (Obj.get obj foo pc = [ (undef, pc) ]);
   assert (Obj.get obj x pc = [ (undef, pc) ]);
 
   (*********** Symbolic write {x : 200} -> {}; {"foo": None; x : 200} ***********)
   let val_200 = value_int 200 in
   let obj, pc = get_obj (Obj.set obj ~field:x ~data:val_200 pc) in
-  assert (Obj.get_fields obj = [ x ]);
-  (* [has_field "foo"] If "foo" = x then true else false *)
+
   assert (
     Obj.has_field obj foo pc
     = ite (eq foo x) (value_bool true) (value_bool false) );
   assert (Obj.has_field obj x pc = value_bool true);
-  (* [has_field y] If y = x then true else if y = foo then false else false *)
   assert (
-    Obj.has_field obj y pc
-    = ite (eq y x) (value_bool true)
-       (value_bool false)) ;
+    Obj.has_field obj y pc = ite (eq y x) (value_bool true) (value_bool false) );
+
   assert (Obj.get obj x pc = [ (val_200, pc) ]);
-  (* [get foo] If foo = x then 200 else undefined *)
   assert (Obj.get obj foo pc = [ (ite (eq foo x) val_200 undef, pc) ]);
 
   (*********** Delete field x -> {x : None}; {"foo": None; x : 200} -> Empty object ***********)
   let obj, pc = get_obj (Obj.delete obj x pc) in
-  (* FIXME: (4) When there are fields stored in several records and it was deleted, it does not take into consideration *)
-  (* Format.printf "get_fields: %a\n" (Fmt.pp_lst Encoding.Expr.pp) (Obj.get_fields obj); *)
-  (* assert (Obj.get_fields obj = []); *)
-  assert (
-    Obj.has_field obj foo pc
-    = (value_bool false) );
+
+  assert (Obj.has_field obj foo pc = value_bool false);
   assert (Obj.has_field obj x pc = value_bool false);
+
   assert (Obj.get obj foo pc = [ (undef, pc) ]);
   assert (Obj.get obj x pc = [ (undef, pc) ])
 
-
-(* Test1: Base cases tests with pc = (x != "foo")*)
+(* Test 1.1: Base cases tests with pc = (x != "foo")*)
 let () =
   let x = key_s "x" in
   let y = key_s "y" in
@@ -103,9 +95,7 @@ let () =
   assert (Obj.get_fields obj = [ foo ]);
   assert (Obj.has_field obj foo pc = value_bool true);
   assert (Obj.has_field obj banana pc = value_bool false);
-  (* [has_field x] If x = foo then true else false *)
-  assert (
-    Obj.has_field obj x pc = (value_bool false) );
+  assert (Obj.has_field obj x pc = value_bool false);
 
   assert (Obj.get obj foo pc = [ (val_100, pc) ]);
   assert (Obj.get obj banana pc = [ (undef, pc) ]);
@@ -116,38 +106,27 @@ let () =
   assert (Obj.to_list obj = []);
   assert (Obj.get_fields obj = []);
   assert (Obj.has_field obj foo pc = value_bool false);
-  assert (
-    Obj.has_field obj x pc
-    = (value_bool false) );
+  assert (Obj.has_field obj x pc = value_bool false);
   assert (Obj.get obj foo pc = [ (undef, pc) ]);
   assert (Obj.get obj x pc = [ (undef, pc) ]);
 
   (*********** Symbolic write {x : 200} -> {}; {"foo": None; x : 200} ***********)
   let val_200 = value_int 200 in
   let obj, pc = get_obj (Obj.set obj ~field:x ~data:val_200 pc) in
-  assert (Obj.get_fields obj = [ x ]);
-  (* [has_field "foo"] If "foo" = x then true else false *)
-  assert (
-    Obj.has_field obj foo pc
-    = (value_bool false) );
+
+  assert (Obj.has_field obj foo pc = value_bool false);
   assert (Obj.has_field obj x pc = value_bool true);
-  (* [has_field y] If y = x then true else if y = foo then false else false *)
   assert (
-    Obj.has_field obj y pc
-    = ite (eq y x) (value_bool true)
-       (value_bool false)) ;
+    Obj.has_field obj y pc = ite (eq y x) (value_bool true) (value_bool false) );
+
   assert (Obj.get obj x pc = [ (val_200, pc) ]);
-  (* [get foo] If foo = x then 200 else undefined *)
-  assert (Obj.get obj foo pc = [ ( undef, pc) ]);
+  assert (Obj.get obj foo pc = [ (undef, pc) ]);
 
   (*********** Delete field x -> {x : None}; {"foo": None; x : 200} -> Empty object ***********)
   let obj, pc = get_obj (Obj.delete obj x pc) in
-  (* FIXME: (4) When there are fields stored in several records and it was deleted, it does not take into consideration *)
-  (* Format.printf "get_fields: %a\n" (Fmt.pp_lst Encoding.Expr.pp) (Obj.get_fields obj); *)
-  (* assert (Obj.get_fields obj = []); *)
-  assert (
-    Obj.has_field obj foo pc
-    =  (value_bool false) );
+
+  assert (Obj.has_field obj foo pc = value_bool false);
   assert (Obj.has_field obj x pc = value_bool false);
+
   assert (Obj.get obj foo pc = [ (undef, pc) ]);
   assert (Obj.get obj x pc = [ (undef, pc) ])

@@ -1,10 +1,7 @@
 module Option = struct
   let ( let* ) v f = Option.bind v f
   let ( let+ ) v f = Option.map f v
-
-  let map_default f d = function
-    | None -> d
-    | Some v -> f v
+  let map_default f d = function None -> d | Some v -> f v
 end
 
 module Encoding = struct
@@ -15,10 +12,7 @@ module Encoding = struct
   let solver = Solver.Z3_batch.create ()
   let is_sat (exprs : t list) : bool = Solver.Z3_batch.check solver exprs
   let neg cond = Expr.(unop Ty.Ty_bool Ty.Not cond)
-
-  let (=>) (e1: t) (e2: t) : bool = is_sat [Expr.Bool.or_ (neg e1)  e2]
-
-
+  let ( => ) (e1 : t) (e2 : t) : bool = is_sat [ Expr.Bool.or_ (neg e1) e2 ]
   let str s = Expr.(make @@ Val (Str s))
 
   let eq v1 v2 =

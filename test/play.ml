@@ -20,9 +20,9 @@ let () =
   let obj, _ = get_obj (Obj.set obj ~field:foo ~data:val_100 pc) in
 
   (* print_get foo (Obj.get obj foo pc);
-  print_get banana (Obj.get obj banana pc);
-  print_get x (Obj.get obj x pc);
-  print_get y (Obj.get obj y pc); *)
+     print_get banana (Obj.get obj banana pc);
+     print_get x (Obj.get obj x pc);
+     print_get y (Obj.get obj y pc); *)
 
   (*********** Symbolic write {x: 200} ***********)
   Format.printf "\n######### Symbolic Write {x : 200}#######\n";

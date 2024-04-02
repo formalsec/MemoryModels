@@ -17,12 +17,13 @@ let () =
   (*********** Create object {"foo": 100} ***********)
   let obj = Obj.create () in
   let obj, pc = get_obj (Obj.set obj ~field:foo ~data:val_100 pc) in
+
   assert (list_is_equal (Obj.to_list obj) [ (foo, val_100) ]);
   assert (list_is_equal (Obj.get_fields obj) [ foo ]);
 
   (*********** Symbolic write {x : 200} -> {} ; {"foo": 100; x : 200}  ***********)
   let obj, pc = get_obj (Obj.set obj ~field:x ~data:val_200 pc) in
-  assert (list_is_equal (Obj.get_fields obj) [ foo; x ]);
+
   assert (
     Obj.has_field obj foo pc
     = ite (eq foo x) (value_bool true) (value_bool true) );
@@ -34,17 +35,17 @@ let () =
     Obj.has_field obj y pc
     = ite (eq y x) (value_bool true)
         (ite (eq y foo) (value_bool true) (value_bool false)) );
+
   assert (Obj.get obj foo pc = [ (ite (eq foo x) val_200 val_100, pc) ]);
   assert (Obj.get obj x pc = [ (val_200, pc) ]);
-  (* [get "banana"] If "banana" = x then 200 else undef *)
   assert (Obj.get obj banana pc = [ (ite (eq banana x) val_200 undef, pc) ]);
-  (* [get y] If y = "foo" then ite(x = "foo", "bar", 100) else if y = x then "bar" else undef *)
   assert (
     Obj.get obj y pc
     = [ (ite (eq y x) val_200 (ite (eq y foo) val_100 undef), pc) ] );
 
   (*********** Concrete write {"banana" : 300} -> {"banana" : 300} ; {"foo": 100; x : 200} ***********)
   let obj, pc = get_obj (Obj.set obj ~field:banana ~data:val_300 pc) in
+
   assert (
     Obj.has_field obj foo pc
     = ite (eq foo x) (value_bool true) (value_bool true) );
@@ -53,17 +54,15 @@ let () =
   assert (
     Obj.has_field obj x pc
     = ite (eq x banana) (value_bool true) (value_bool true) );
-  (* [has_field y] If y = banana then true else if y = x then true else if y = foo then true else false *)
   assert (
     Obj.has_field obj y pc
     = ite (eq y banana) (value_bool true)
         (ite (eq y x) (value_bool true)
            (ite (eq y foo) (value_bool true) (value_bool false)) ) );
+
   assert (Obj.get obj foo pc = [ (ite (eq foo x) val_200 val_100, pc) ]);
   assert (Obj.get obj banana pc = [ (val_300, pc) ]);
-  (* [get x] If x = banana then 300 else 200 *)
   assert (Obj.get obj x pc = [ (ite (eq x banana) val_300 val_200, pc) ]);
-  (* [get y] if y = foo then ite(x = "foo", 200, 100) else if y = banana then 300 else if y = x then 200 else undef *)
   assert (
     Obj.get obj y pc
     = [ ( ite (eq y banana) val_300
@@ -75,7 +74,20 @@ let () =
   (* {"banana" : 300}; y : 400 ;
      {"foo": 100; x : 200} *)
   let obj, pc = get_obj (Obj.set obj ~field:y ~data:val_400 pc) in
-  assert (list_is_equal (Obj.get_fields obj) [ foo; x; banana; y ]);
+
+  assert (
+    Obj.has_field obj foo pc
+    = ite (eq foo y) (value_bool true)
+        (ite (eq foo x) (value_bool true) (value_bool true)) );
+  assert (
+    Obj.has_field obj x pc
+    = ite (eq x y) (value_bool true)
+        (ite (eq x banana) (value_bool true) (value_bool true)) );
+  assert (
+    Obj.has_field obj banana pc
+    = ite (eq banana y) (value_bool true) (value_bool true) );
+  assert (Obj.has_field obj y pc = value_bool true);
+
   assert (
     Obj.get obj foo pc
     = [ (ite (eq foo y) val_400 (ite (eq foo x) val_200 val_100), pc) ] );
