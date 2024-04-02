@@ -46,41 +46,40 @@ module M :
     let find_opt = Hashtbl.find_opt concrete in
     let find = Hashtbl.find concrete in
     let bool_true = boolean true in
-
+    
     match Expr.view p with
     | Val (Str s) -> (
       let v = find_opt s in
       match v with
       | Some v' -> (None, [ (bool_true, v') ])
-      | _ -> (Some bool_true, []) )
+      | _ -> (Some pc, []) )
     | _ -> (
       let keys = Hashtbl.keys concrete in
       let keys' = List.filter (fun k -> is_sat [ eq p (str k); pc ]) keys in
       match keys' with
-      | [ k ] -> (Some (ne p (str k)), [ (eq p (str k), find k) ])
+      | [ k ] -> (Some (and_ pc (ne p (str k))), [ (eq p (str k), find k) ])
       | _ ->
         ( Some
             (List.fold_right
-               (fun k acc -> Expr.Bool.and_ acc (ne p (str k)))
-               keys' bool_true )
+               (fun k acc -> and_ acc (ne p (str k)))
+               keys' pc )
         , List.map (fun k -> (eq p (str k), find k)) keys' ) )
 
   let get_record ({ concrete; symbolic } : record) (pc : pc_value) (p : value) :
     pc_value option * (pc_value * value option) list =
-    let get_concrete = get_concrete concrete pc in
+    let get_concrete = get_concrete concrete  in
 
     match symbolic with
     | Some (p', v) ->
       (* FIXME:
-         se pc = true, p = banana, p = x => entra aqui neste if, mas não era suposto *)
+         se pc = true, p = banana, p' = x => entra aqui neste if, mas não era suposto *)
       (* if (pc => (eq p p')) then  *)
       if Expr.equal p p' then (None, [ (boolean true, v) ])
       else if is_sat [ pc; eq p p' ] then
-        let b, pvs = get_concrete p in
-        let new_b = Option.map (fun b -> Expr.Bool.and_ b (ne p p')) b in
-        (new_b, (eq p p', v) :: pvs)
-      else get_concrete p
-    | None -> get_concrete p
+        let b, pvs = get_concrete (and_ pc (ne p p'))p in
+        (b, (eq p p', v) :: pvs)
+      else get_concrete pc p
+    | None -> get_concrete pc p
 
   let rec get_aux (p : value) (pc : pc_value)
     ((r, pvs) : pc_value option * (pc_value * value option) list)
@@ -91,8 +90,7 @@ module M :
     let pvs'' = pvs @ pvs' in
     match r' with
     | None -> pvs''
-    | Some b ->
-      map_default (get_aux p pc (Some (Expr.Bool.and_ r b), pvs'')) pvs'' parent
+    | Some b -> map_default (get_aux p pc (Some (and_ r b), pvs'')) pvs'' parent
 
   let mk_ite_get (conds : (pc_value * value option) list) : value =
     List.fold_right

@@ -1,3 +1,9 @@
 (tests
- (names test_object_1 test_object_2 test_object_3 test_object_4 play)
+ (names
+  test_object_1
+  test_object_2
+  test_object_3
+  test_object_4
+  bool_true
+  eq_x_foo)
  (libraries memory_models encoding))
