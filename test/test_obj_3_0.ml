@@ -2,7 +2,8 @@ open Utils
 open Memory_models
 module Obj = Object_mwl.M
 
-(* Test case 3: Object with 1 symbolic field followed by 1 concrete field *)
+(* Test case 3: pc = true
+   Object with 1 symbolic field followed by 1 concrete field *)
 let () =
   let x = key_s "x" in
   let y = key_s "y" in
