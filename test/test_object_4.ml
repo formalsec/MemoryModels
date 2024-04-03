@@ -165,7 +165,7 @@ let () =
      {"foo": 400; y : 500} ;
      {"foo": 100; "bar": 200; "age": 10; x : 300} *)
   let obj, pc = get_obj (Obj.delete obj foo pc) in
-  (* FIXME: Faz sentido?  retorna false*)
+
   assert (Obj.has_field obj foo pc = value_bool false);
   assert (
     Obj.has_field obj bar pc
@@ -397,7 +397,7 @@ let () =
      {"foo": 400; y : 500} ;
      {"foo": 100; "bar": 200; "age": 10; x : 300} *)
   let obj, pc = get_obj (Obj.delete obj foo pc) in
-  (* FIXME: Faz sentido?  retorna false*)
+
   assert (Obj.has_field obj foo pc = value_bool false);
   assert (
     Obj.has_field obj bar pc
@@ -502,8 +502,7 @@ let () =
 
   (*********** Symbolic write {x : 300} -> {} ; {"foo": 100； "bar": 200; "age": 10; x : 300}  ***********)
   let obj, pc = get_obj (Obj.set obj ~field:x ~data:val_300 pc) in
-  (* FIXME: retorna ite(x=foo, true, true)*)
-  (* assert (Obj.has_field obj foo pc = value_bool true); *)
+  assert (Obj.has_field obj foo pc = value_bool true);
   assert (Obj.has_field obj bar pc = value_bool true);
   assert (Obj.has_field obj age pc = value_bool true);
   assert (Obj.has_field obj x pc = value_bool true);
@@ -512,10 +511,9 @@ let () =
     Obj.has_field obj z pc
     = ite (eq z x) (value_bool true)
         (ite (eq z bar) (value_bool true)
-              (ite (eq z age) (value_bool true) (value_bool false)) ) ) ;
+           (ite (eq z age) (value_bool true) (value_bool false)) ) );
 
-  (* FIXME: será que deverá retornar logo val_300? *)
-  assert (Obj.get obj foo pc = [ (ite (eq foo x) val_300 val_100, pc) ]);
+  assert (Obj.get obj foo pc = [ (val_300, pc) ]);
   assert (Obj.get obj bar pc = [ (val_200, pc) ]);
   assert (Obj.get obj age pc = [ (val_10, pc) ]);
   assert (Obj.get obj x pc = [ (val_300, pc) ]);
@@ -523,8 +521,7 @@ let () =
   assert (
     Obj.get obj z pc
     = [ ( ite (eq z x) val_300
-            (ite (eq z bar) val_200
-              (ite (eq z age) val_10 undef))
+            (ite (eq z bar) val_200 (ite (eq z age) val_10 undef))
         , pc )
       ] );
 
@@ -536,8 +533,7 @@ let () =
   assert (Obj.has_field obj foo pc = value_bool true);
   assert (Obj.has_field obj bar pc = value_bool true);
   assert (Obj.has_field obj age pc = value_bool true);
-  assert (
-    Obj.has_field obj x pc = ite (eq x foo) (value_bool true) (value_bool true) );
+  assert (Obj.has_field obj x pc = value_bool true);
   assert (Obj.has_field obj banana pc = value_bool false);
   assert (
     Obj.has_field obj z pc
@@ -548,7 +544,7 @@ let () =
   assert (Obj.get obj foo pc = [ (val_400, pc) ]);
   assert (Obj.get obj bar pc = [ (val_200, pc) ]);
   assert (Obj.get obj age pc = [ (val_10, pc) ]);
-  assert (Obj.get obj x pc = [ (ite (eq x foo) val_400 val_300, pc) ]);
+  assert (Obj.get obj x pc = [ (val_400, pc) ]);
   assert (
     Obj.get obj z pc
     = [ ( ite (eq z foo) val_400
@@ -572,9 +568,7 @@ let () =
     Obj.has_field obj age pc
     = ite (eq age y) (value_bool true) (value_bool true) );
   assert (
-    Obj.has_field obj x pc
-    = ite (eq x y) (value_bool true)
-        (ite (eq x foo) (value_bool true) (value_bool true)) );
+    Obj.has_field obj x pc = ite (eq x y) (value_bool true) (value_bool true) );
   assert (Obj.has_field obj y pc = value_bool true);
   assert (
     Obj.has_field obj banana pc
@@ -589,9 +583,7 @@ let () =
   assert (Obj.get obj foo pc = [ (ite (eq foo y) val_500 val_400, pc) ]);
   assert (Obj.get obj bar pc = [ (ite (eq bar y) val_500 val_200, pc) ]);
   assert (Obj.get obj age pc = [ (ite (eq age y) val_500 val_10, pc) ]);
-  assert (
-    Obj.get obj x pc
-    = [ (ite (eq x y) val_500 (ite (eq x foo) val_400 val_300), pc) ] );
+  assert (Obj.get obj x pc = [ (ite (eq x y) val_500 val_400, pc) ]);
   assert (Obj.get obj y pc = [ (val_500, pc) ]);
   assert (Obj.get obj banana pc = [ (ite (eq banana y) val_500 undef, pc) ]);
   assert (
@@ -607,7 +599,7 @@ let () =
      {"foo": 400; y : 500} ;
      {"foo": 100; "bar": 200; "age": 10; x : 300} *)
   let obj, pc = get_obj (Obj.delete obj foo pc) in
-  (* FIXME: Faz sentido?  retorna false*)
+
   assert (Obj.has_field obj foo pc = value_bool false);
   assert (
     Obj.has_field obj bar pc
@@ -615,11 +607,7 @@ let () =
   assert (
     Obj.has_field obj age pc
     = ite (eq age y) (value_bool true) (value_bool true) );
-  (* FIXME: (importante) retorna true, mas como o pc é x=foo será qeu retorna true ou false? *)
-  (* Format.printf "has_field x: %a\n" Encoding.Expr.pp (Obj.has_field obj x pc);
-     Format.printf "pc x: %a\n" Encoding.Expr.pp ( pc); *)
-  (* assert (
-     Obj.has_field obj x pc = (value_bool false) ); *)
+  assert (Obj.has_field obj x pc = value_bool false);
   assert (Obj.has_field obj y pc = value_bool true);
   assert (
     Obj.has_field obj banana pc
@@ -633,8 +621,7 @@ let () =
   assert (Obj.get obj foo pc = [ (undef, pc) ]);
   assert (Obj.get obj bar pc = [ (ite (eq bar y) val_500 val_200, pc) ]);
   assert (Obj.get obj age pc = [ (ite (eq age y) val_500 val_10, pc) ]);
-  (* FIXME: *)
-  (* assert (Obj.get obj x pc = [ (ite (eq x y) val_500 val_300, pc) ]); *)
+  assert (Obj.get obj x pc = [ (undef, pc) ]);
   assert (Obj.get obj y pc = [ (val_500, pc) ]);
   assert (
     Obj.get obj z pc
@@ -650,9 +637,7 @@ let () =
      {"foo": 100; "bar": 200; "age": 10; x : 300} *)
   let obj, pc = get_obj (Obj.set obj ~field:x ~data:val_300 pc) in
 
-  assert (
-    Obj.has_field obj foo pc
-    = ite (eq foo x) (value_bool true) (value_bool false) );
+  assert (Obj.has_field obj foo pc = value_bool true);
   assert (
     Obj.has_field obj bar pc
     = ite (eq bar y) (value_bool true) (value_bool true) );
@@ -672,7 +657,7 @@ let () =
            (ite (eq z bar) (value_bool true)
               (ite (eq z age) (value_bool true) (value_bool false)) ) ) );
 
-  assert (Obj.get obj foo pc = [ (ite (eq foo x) val_300 undef, pc) ]);
+  assert (Obj.get obj foo pc = [ (val_300, pc) ]);
   assert (Obj.get obj bar pc = [ (ite (eq bar y) val_500 val_200, pc) ]);
   assert (Obj.get obj age pc = [ (ite (eq age y) val_500 val_10, pc) ]);
   assert (Obj.get obj x pc = [ (val_300, pc) ]);

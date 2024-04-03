@@ -1,10 +1,7 @@
 open Encoding
 open Memory_models
 
-let eq v1 v2 =
-  (* Just accepts v1 and v2 of type int *)
-  Expr.(relop Ty.Ty_int Ty.Eq v1 v2)
-
+let eq v1 v2 = Expr.(relop Ty.Ty_bool Ty.Eq v1 v2)
 let ne v1 v2 = Expr.(unop Ty.Ty_bool Ty.Not (eq v1 v2))
 let undef = Expr.(make @@ Symbol Symbol.("undefined" @: Ty.Ty_str))
 let key_c str = Expr.(make @@ Val (Str str))

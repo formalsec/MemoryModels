@@ -46,37 +46,31 @@ module M :
     let find_opt = Hashtbl.find_opt concrete in
     let find = Hashtbl.find concrete in
     let bool_true = boolean true in
-    
+
     match Expr.view p with
     | Val (Str s) -> (
       let v = find_opt s in
-      match v with
-      | Some v' -> (None, [ (bool_true, v') ])
-      | _ -> (Some pc, []) )
+      match v with Some v' -> (None, [ (bool_true, v') ]) | _ -> (Some pc, []) )
     | _ -> (
       let keys = Hashtbl.keys concrete in
       let keys' = List.filter (fun k -> is_sat [ eq p (str k); pc ]) keys in
       match keys' with
-      | [ k ] -> (Some (and_ pc (ne p (str k))), [ (eq p (str k), find k) ])
+      | [ k ] ->
+        if pc => eq p (str k) then (None, [ (bool_true, find k) ])
+        else (Some (and_ pc (ne p (str k))), [ (eq p (str k), find k) ])
       | _ ->
-        ( Some
-            (List.fold_right
-               (fun k acc -> and_ acc (ne p (str k)))
-               keys' pc )
+        ( Some (List.fold_right (fun k acc -> and_ acc (ne p (str k))) keys' pc)
         , List.map (fun k -> (eq p (str k), find k)) keys' ) )
 
   let get_record ({ concrete; symbolic } : record) (pc : pc_value) (p : value) :
     pc_value option * (pc_value * value option) list =
-    let get_concrete = get_concrete concrete  in
+    let get_concrete = get_concrete concrete in
 
     match symbolic with
     | Some (p', v) ->
-      (* FIXME:
-         se pc = true, p = banana, p' = x => entra aqui neste if, mas não era suposto *)
-      (* if (pc => (eq p p')) then  *)
-      if Expr.equal p p' then (None, [ (boolean true, v) ])
+      if pc => eq p p' then (None, [ (boolean true, v) ])
       else if is_sat [ pc; eq p p' ] then
-        let b, pvs = get_concrete (and_ pc (ne p p'))p in
+        let b, pvs = get_concrete (and_ pc (ne p p')) p in
         (b, (eq p p', v) :: pvs)
       else get_concrete pc p
     | None -> get_concrete pc p
