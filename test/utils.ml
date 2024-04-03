@@ -10,6 +10,7 @@ let value_str v = Expr.(make @@ Val (Str v))
 let value_int v = Expr.(make @@ Val (Int v))
 let value_bool v = Expr.Bool.v v
 let ite c v1 v2 = Expr.(Bool.ite c v1 v2)
+let or_ = Expr.Bool.or_
 let and_ = Expr.Bool.and_
 
 let print_get (field : Encoding.Expr.t) l (* (expr : Encoding.Expr.t) *) =

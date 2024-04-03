@@ -79,7 +79,11 @@ module M :
     ((r, pvs) : pc_value option * (pc_value * value option) list)
     { cur; parent } : (pc_value * value option) list =
     let open Utils.Option in
-    let r = match r with Some r -> r | None -> boolean true in
+    let r =
+      match r with
+      | Some r -> r
+      | None -> failwith "Object_mwl.get_aux unsupported case"
+    in
     let r', pvs' = get_record cur r p in
     let pvs'' = pvs @ pvs' in
     match r' with
@@ -87,10 +91,11 @@ module M :
     | Some b -> map_default (get_aux p pc (Some (and_ r b), pvs'')) pvs'' parent
 
   let mk_ite_get (conds : (pc_value * value option) list) : value =
-    List.fold_right
-      (fun (cond, v) acc ->
-        match v with None -> acc | Some v -> ite cond v acc )
-      conds undef
+    if List.exists (fun (_, v) -> Option.is_some v) conds then
+      List.fold_right
+        (fun (cond, v) acc -> ite cond (Option.value v ~default:undef) acc)
+        conds undef
+    else undef
 
   let get (o : t) (field : value) (pc : pc_value) : (value * pc_value) list =
     let l = get_aux field pc (Some pc, []) o in
@@ -127,10 +132,14 @@ module M :
         o.cur.concrete []
 
   let mk_ite_has_field (conds : (pc_value * value option) list) : value =
-    List.fold_right
-      (fun (cond, v) acc ->
-        match v with None -> acc | Some _ -> ite cond (boolean true) acc )
-      conds (boolean false)
+    let open Utils.Option in
+    if List.exists (fun (_, v) -> Option.is_some v) conds then
+      List.fold_right
+        (fun (cond, v) acc ->
+          let v' = map_default (fun _ -> boolean true) (boolean false) v in
+          ite cond v' acc )
+        conds (boolean false)
+    else boolean false
 
   let has_field (o : t) (field : value) (pc : pc_value) : value =
     let l = get_aux field pc (Some pc, []) o in

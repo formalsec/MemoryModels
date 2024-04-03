@@ -2,8 +2,8 @@ open Utils
 open Memory_models
 module Obj = Object_mwl.M
 
-(* Test case 4.2: pc = ("foo" = x) 
-  Delete after two instances of the same field in different records pc = (foo = x)*)
+(* Test case 4.2: pc = ("foo" = x)
+   Delete after two instances of the same field in different records pc = (foo = x)*)
 let () =
   let x = key_s "x" in
   let y = key_s "y" in
@@ -139,25 +139,28 @@ let () =
     Obj.has_field obj age pc
     = ite (eq age y) (value_bool true) (value_bool true) );
   assert (Obj.has_field obj x pc = value_bool false);
-  assert (Obj.has_field obj y pc = value_bool true);
+  assert (
+    Obj.has_field obj y pc = ite (eq y foo) (value_bool false) (value_bool true) );
   assert (
     Obj.has_field obj banana pc
     = ite (eq banana y) (value_bool true) (value_bool false) );
   assert (
     Obj.has_field obj z pc
-    = ite (eq z y) (value_bool true)
-        (ite (eq z bar) (value_bool true)
-           (ite (eq z age) (value_bool true) (value_bool false)) ) );
+    = ite (eq z foo) (value_bool false)
+        (ite (eq z y) (value_bool true)
+           (ite (eq z bar) (value_bool true)
+              (ite (eq z age) (value_bool true) (value_bool false)) ) ) );
 
   assert (Obj.get obj foo pc = [ (undef, pc) ]);
   assert (Obj.get obj bar pc = [ (ite (eq bar y) val_500 val_200, pc) ]);
   assert (Obj.get obj age pc = [ (ite (eq age y) val_500 val_10, pc) ]);
   assert (Obj.get obj x pc = [ (undef, pc) ]);
-  assert (Obj.get obj y pc = [ (val_500, pc) ]);
+  assert (Obj.get obj y pc = [ (ite (eq y foo) undef val_500, pc) ]);
   assert (
     Obj.get obj z pc
-    = [ ( ite (eq z y) val_500
-            (ite (eq z bar) val_200 (ite (eq z age) val_10 undef))
+    = [ ( ite (eq z foo) undef
+            (ite (eq z y) val_500
+               (ite (eq z bar) val_200 (ite (eq z age) val_10 undef)) )
         , pc )
       ] );
 

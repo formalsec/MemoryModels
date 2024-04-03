@@ -1,11 +1,11 @@
 (tests
- (names 
- test_obj_1_0
- test_obj_1_1
- test_obj_2_0
- test_obj_3_0
- test_obj_4_0
- test_obj_4_1
- test_obj_4_2
- )
+ (names
+  test_obj_1_0
+  test_obj_1_1
+  test_obj_2_0
+  test_obj_3_0
+  test_obj_4_0
+  test_obj_4_1
+  test_obj_4_2
+  test_obj_5_0)
  (libraries memory_models encoding))

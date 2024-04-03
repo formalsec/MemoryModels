@@ -56,7 +56,9 @@ let () =
     = ite (eq foo x) (value_bool true) (value_bool false) );
   assert (Obj.has_field obj x pc = value_bool true);
   assert (
-    Obj.has_field obj y pc = ite (eq y x) (value_bool true) (value_bool false) );
+    Obj.has_field obj y pc
+    = ite (eq y x) (value_bool true)
+        (ite (eq y foo) (value_bool false) (value_bool false)) );
 
   assert (Obj.get obj x pc = [ (val_200, pc) ]);
   assert (Obj.get obj foo pc = [ (ite (eq foo x) val_200 undef, pc) ]);
