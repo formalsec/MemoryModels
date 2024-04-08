@@ -1,4 +1,4 @@
-open Utils
+open Test.Utils
 open Memory_models
 module Obj = Object_mwl.M
 

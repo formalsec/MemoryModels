@@ -2,15 +2,12 @@
 
    module Make (O : Object_intf.S with type value = Encoding.Expr.t) = struct
      type value = Encoding.Expr.t
+     type pc_value = Encoding.Expr.t
      type object_ = O.t
-
-     type block =
-       | Block of object_
-       | Empty
 
      type t =
        { parent : t option
-       ; map : (int, block) Hashtbl.t
+       ; map : (int, object_) Hashtbl.t
        ; mutable next : int
        }
 
@@ -26,25 +23,24 @@
 
      let insert (h : t) (o : object_) : value =
        let next = h.next in
-       Hashtbl.replace h.map next (Block o);
+       Hashtbl.replace h.map next o;
        h.next <- h.next + 1;
        Expr.(make @@ Val (Int next))
 
      let remove (h : t) (l : value) : unit =
        let loc = get_loc l in
-       Hashtbl.replace h.map loc Empty
+       Hashtbl.remove h.map loc
 
      let set ({ map = h; _ } : t) (l : value) (data : object_) : unit =
        let loc = get_loc l in
-       Hashtbl.replace h loc (Block data)
+       Hashtbl.replace h loc data
 
      let find (h : t) (l : value) : (object_ * bool) option =
        let open Utils.Option in
        let loc = get_loc l in
        let rec aux { parent; map; _ } loc from_parent =
          match Hashtbl.find_opt map loc with
-         | Some Block o -> Some (o, from_parent)
-         | Some Empty -> None
+         | Some o -> Some (o, from_parent)
          | None ->
            let* parent in
            aux parent loc true
@@ -61,65 +57,36 @@
          set h loc obj;
          obj
 
-     let has_field (h : t) (loc : value) (field : value) : value =
+     let has_field (h : t) (loc : value) (field : value) (pc : pc_value) : value =
        Option.fold (get h loc)
-         ~some:(fun o -> O.has_field o field)
+         ~some:(fun o -> O.has_field o field pc)
          ~none:Expr.(Bool.v false)
 
-     let set_field (h : t) (loc : value) ~(field : value) ~(data : value) : unit =
+     let set_field (h : t) (loc : value) ~(field : value) ~(data : value) (pc : pc_value) : unit =
        Option.iter
          (fun o ->
-           let o' = O.set o ~key:field ~data in
+           let o' = O.set o ~key:field ~data pc in
            set h loc o' )
          (get h loc)
 
-     let get_field (h : t) (loc : value) (field : value) :
+     let get_field (h : t) (loc : value) (field : value) (pc : pc_value) :
        (value * value list) list =
        let o = get h loc in
-       Option.fold o ~none:[] ~some:(fun o -> O.get o field)
+       Option.fold o ~none:[] ~some:(fun o -> O.get o field pc)
 
-     let delete_field (h : t) (loc : value) (f : value) =
+     let delete_field (h : t) (loc : value) (f : value) (pc : pc_value) : unit =
        let obj = get h loc in
        Option.iter
          (fun o ->
-           let o' = O.delete o f in
+           let o' = O.delete o f pc in
            set h loc o' )
          obj
-
-     let rec unfold_ite ~(accum : value) (e : value) : (value option * int) list =
-       match Expr.view e with
-       | Val (Int x) (* | Val (Val.Symbol x)  *) -> [ (Some accum, x) ]
-       | Triop (_, Ty.Ite, c, a, e) -> (
-         match Expr.view a with
-         | Val (Int l) ->
-           let accum' =
-             Expr.(binop Ty.Ty_bool Ty.And accum (unop Ty.Ty_bool Ty.Not c))
-           in
-           let tl = unfold_ite ~accum:accum' e in
-           (Some Expr.(binop Ty.Ty_bool Ty.And accum c), l) :: tl
-         | _ -> assert false )
-       | _ -> assert false
-
-     let loc (e : value) : ((value option * int) list, string) Result.t =
-       match Expr.view e with
-       | Val (Int l) -> Ok [ (None, l) ]
-       | Triop (_, Ty.Ite, c, a, v) -> (
-         match Expr.view a with
-         | Val (Int l) ->
-           Ok ((Some c, l) :: unfold_ite ~accum:Expr.(unop Ty.Ty_bool Ty.Not c) v)
-         | _ -> Error (Fmt.asprintf "Value '%a' is not a loc expression" Expr.pp e)
-         )
-       | _ -> Error (Fmt.asprintf "Value '%a' is not a loc expression" Expr.pp e)
 
      let pp_loc (fmt : Fmt.t) (loc : value) : unit = Expr.pp fmt loc
 
      let rec pp (fmt : Fmt.t) ({ map; parent; _ } : t) =
        let open Fmt in
-       let pp_block fmt = function
-         | Block o -> fprintf fmt "%a" O.pp o
-         | Empty -> fprintf fmt "Empty"
-       in
-       let pp_v fmt (key, data) = fprintf fmt "%a: %a" pp_int key pp_block data in
+       let pp_v fmt (key, data) = fprintf fmt "%a: %a" pp_int key O.pp data in
        let pp_parent fmt v =
          pp_opt (fun fmt h -> fprintf fmt "%a@\n<-@\n" pp h) fmt v
        in
@@ -133,4 +100,11 @@
        | None -> fprintf fmt "%a" pp_loc l
        | Some o -> fprintf fmt "%a -> %a" pp_loc l O.pp o
    end
-*)
+
+   module M :
+     Memory_intf.S
+       with type value = Encoding.Expr.t
+        and type object_ = Object_mwl.M.t =
+     Make (Object_symbolic.M)
+
+   include M *)

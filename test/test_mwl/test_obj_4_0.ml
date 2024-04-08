@@ -1,8 +1,8 @@
-open Utils
+open Test.Utils
 open Memory_models
 module Obj = Object_mwl.M
 
-(* Test case 4.1: pc = ("foo" != x)
+(* Test case 4: pc = true
    Delete after two instances of the same field in different records *)
 let () =
   let x = key_s "x" in
@@ -18,7 +18,7 @@ let () =
   let val_300 = value_int 300 in
   let val_400 = value_int 400 in
   let val_500 = value_int 500 in
-  let pc = ne foo x in
+  let pc = value_bool true in
 
   (*********** Create object {"foo": 100； "bar": 200; "age": 10} ***********)
   let obj = Obj.create () in
@@ -34,7 +34,9 @@ let () =
   (*********** Symbolic write {x : 300} -> {} ; {"foo": 100； "bar": 200; "age": 10; x : 300}  ***********)
   let obj, pc = get_obj (Obj.set obj ~field:x ~data:val_300 pc) in
 
-  assert (Obj.has_field obj foo pc = value_bool true);
+  assert (
+    Obj.has_field obj foo pc
+    = ite (eq foo x) (value_bool true) (value_bool true) );
   assert (
     Obj.has_field obj bar pc
     = ite (eq bar x) (value_bool true) (value_bool true) );
@@ -52,7 +54,7 @@ let () =
            (ite (eq z foo) (value_bool true)
               (ite (eq z age) (value_bool true) (value_bool false)) ) ) );
 
-  assert (Obj.get obj foo pc = [ (val_100, pc) ]);
+  assert (Obj.get obj foo pc = [ (ite (eq foo x) val_300 val_100, pc) ]);
   assert (Obj.get obj bar pc = [ (ite (eq bar x) val_300 val_200, pc) ]);
   assert (Obj.get obj age pc = [ (ite (eq age x) val_300 val_10, pc) ]);
   assert (Obj.get obj x pc = [ (val_300, pc) ]);
@@ -77,7 +79,8 @@ let () =
   assert (
     Obj.has_field obj age pc
     = ite (eq age x) (value_bool true) (value_bool true) );
-  assert (Obj.has_field obj x pc = value_bool true);
+  assert (
+    Obj.has_field obj x pc = ite (eq x foo) (value_bool true) (value_bool true) );
   assert (
     Obj.has_field obj banana pc
     = ite (eq banana x) (value_bool true) (value_bool false) );
@@ -91,7 +94,7 @@ let () =
   assert (Obj.get obj foo pc = [ (val_400, pc) ]);
   assert (Obj.get obj bar pc = [ (ite (eq bar x) val_300 val_200, pc) ]);
   assert (Obj.get obj age pc = [ (ite (eq age x) val_300 val_10, pc) ]);
-  assert (Obj.get obj x pc = [ (val_300, pc) ]);
+  assert (Obj.get obj x pc = [ (ite (eq x foo) val_400 val_300, pc) ]);
   assert (
     Obj.get obj z pc
     = [ ( ite (eq z foo) val_400
@@ -118,7 +121,9 @@ let () =
     = ite (eq age y) (value_bool true)
         (ite (eq age x) (value_bool true) (value_bool true)) );
   assert (
-    Obj.has_field obj x pc = ite (eq x y) (value_bool true) (value_bool true) );
+    Obj.has_field obj x pc
+    = ite (eq x y) (value_bool true)
+        (ite (eq x foo) (value_bool true) (value_bool true)) );
   assert (Obj.has_field obj y pc = value_bool true);
   assert (
     Obj.has_field obj banana pc
@@ -139,7 +144,9 @@ let () =
   assert (
     Obj.get obj age pc
     = [ (ite (eq age y) val_500 (ite (eq age x) val_300 val_10), pc) ] );
-  assert (Obj.get obj x pc = [ (ite (eq x y) val_500 val_300, pc) ]);
+  assert (
+    Obj.get obj x pc
+    = [ (ite (eq x y) val_500 (ite (eq x foo) val_400 val_300), pc) ] );
   assert (Obj.get obj y pc = [ (val_500, pc) ]);
   assert (
     Obj.get obj banana pc
@@ -169,7 +176,9 @@ let () =
     = ite (eq age y) (value_bool true)
         (ite (eq age x) (value_bool true) (value_bool true)) );
   assert (
-    Obj.has_field obj x pc = ite (eq x y) (value_bool true) (value_bool true) );
+    Obj.has_field obj x pc
+    = ite (eq x foo) (value_bool false)
+        (ite (eq x y) (value_bool true) (value_bool true)) );
   assert (
     Obj.has_field obj y pc = ite (eq y foo) (value_bool false) (value_bool true) );
   assert (
@@ -191,7 +200,9 @@ let () =
   assert (
     Obj.get obj age pc
     = [ (ite (eq age y) val_500 (ite (eq age x) val_300 val_10), pc) ] );
-  assert (Obj.get obj x pc = [ (ite (eq x y) val_500 val_300, pc) ]);
+  assert (
+    Obj.get obj x pc
+    = [ (ite (eq x foo) undef (ite (eq x y) val_500 val_300), pc) ] );
   assert (Obj.get obj y pc = [ (ite (eq y foo) undef val_500, pc) ]);
   assert (
     Obj.get obj z pc
@@ -209,7 +220,9 @@ let () =
      {"foo": 100; "bar": 200; "age": 10; x : 300} *)
   let obj, pc = get_obj (Obj.set obj ~field:x ~data:val_300 pc) in
 
-  assert (Obj.has_field obj foo pc = value_bool false);
+  assert (
+    Obj.has_field obj foo pc
+    = ite (eq foo x) (value_bool true) (value_bool false) );
   assert (
     Obj.has_field obj bar pc
     = ite (eq bar x) (value_bool true)
@@ -235,7 +248,7 @@ let () =
               (ite (eq z bar) (value_bool true)
                  (ite (eq z age) (value_bool true) (value_bool false)) ) ) ) );
 
-  assert (Obj.get obj foo pc = [ (undef, pc) ]);
+  assert (Obj.get obj foo pc = [ (ite (eq foo x) val_300 undef, pc) ]);
   assert (
     Obj.get obj bar pc
     = [ (ite (eq bar x) val_300 (ite (eq bar y) val_500 val_200), pc) ] );

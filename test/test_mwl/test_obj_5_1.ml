@@ -1,10 +1,10 @@
-open Utils
+open Test.Utils
 open Memory_models
 module Obj = Object_mwl.M
 
-(* Test case 5.2: pc = (x = "foo")
-   ()
-   (y : 500, {"foo": None; "banana": 400})
+(* Test case 5.1: pc = (x = "foo" or x = "bar")
+   (       , {"foo": None})
+   (y : 500, {"foo": 400 })
    (x : 300, {"foo": 100; "bar": 200; "age": 10}) *)
 
 let () =
@@ -21,7 +21,7 @@ let () =
   let val_300 = value_int 300 in
   let val_400 = value_int 400 in
   let val_500 = value_int 500 in
-  let pc = eq x foo in
+  let pc = or_ (eq x foo) (eq x bar) in
 
   let obj = Obj.create () in
   let obj, pc = get_obj (Obj.set obj ~field:foo ~data:val_100 pc) in
@@ -30,45 +30,51 @@ let () =
   let obj, pc = get_obj (Obj.set obj ~field:x ~data:val_300 pc) in
 
   let obj, pc = get_obj (Obj.set obj ~field:foo ~data:val_400 pc) in
-  let obj, pc = get_obj (Obj.set obj ~field:banana ~data:val_400 pc) in
-  let obj, pc = get_obj (Obj.delete obj foo pc) in
   let obj, pc = get_obj (Obj.set obj ~field:y ~data:val_500 pc) in
 
+  let obj, pc = get_obj (Obj.delete obj foo pc) in
+
   (* test has_field *)
-  assert (
-    Obj.has_field obj foo pc
-    = ite (eq foo y) (value_bool true) (value_bool false) );
+  assert (Obj.has_field obj foo pc = value_bool false);
   assert (
     Obj.has_field obj bar pc
-    = ite (eq bar y) (value_bool true) (value_bool true) );
+    = ite (eq bar y) (value_bool true)
+        (ite (eq bar x) (value_bool true) (value_bool true)) );
   assert (
     Obj.has_field obj age pc
     = ite (eq age y) (value_bool true) (value_bool true) );
   assert (
-    Obj.has_field obj x pc = ite (eq x y) (value_bool true) (value_bool false) );
-  assert (Obj.has_field obj y pc = value_bool true);
+    Obj.has_field obj x pc
+    = ite (eq x foo) (value_bool false)
+        (ite (eq x y) (value_bool true) (value_bool true)) );
+  assert (
+    Obj.has_field obj y pc = ite (eq y foo) (value_bool false) (value_bool true) );
   assert (
     Obj.has_field obj banana pc
-    = ite (eq banana y) (value_bool true) (value_bool true) );
+    = ite (eq banana y) (value_bool true) (value_bool false) );
   assert (
     Obj.has_field obj z pc
-    = ite (eq z y) (value_bool true)
-        (ite (eq z banana) (value_bool true)
-           (ite (eq z foo) (value_bool false)
+    = ite (eq z foo) (value_bool false)
+        (ite (eq z y) (value_bool true)
+           (ite (eq z x) (value_bool true)
               (ite (eq z bar) (value_bool true)
                  (ite (eq z age) (value_bool true) (value_bool false)) ) ) ) );
 
   (* test get *)
-  assert (Obj.get obj foo pc = [ (ite (eq foo y) val_500 undef, pc) ]);
-  assert (Obj.get obj bar pc = [ (ite (eq bar y) val_500 val_200, pc) ]);
+  assert (Obj.get obj foo pc = [ (undef, pc) ]);
+  assert (
+    Obj.get obj bar pc
+    = [ (ite (eq bar y) val_500 (ite (eq bar x) val_300 val_200), pc) ] );
   assert (Obj.get obj age pc = [ (ite (eq age y) val_500 val_10, pc) ]);
-  assert (Obj.get obj x pc = [ (ite (eq x y) val_500 undef, pc) ]);
-  assert (Obj.get obj y pc = [ (val_500, pc) ]);
+  assert (
+    Obj.get obj x pc
+    = [ (ite (eq x foo) undef (ite (eq x y) val_500 val_300), pc) ] );
+  assert (Obj.get obj y pc = [ (ite (eq y foo) undef val_500, pc) ]);
   assert (
     Obj.get obj z pc
-    = [ ( ite (eq z y) val_500
-            (ite (eq z banana) val_400
-               (ite (eq z foo) undef
+    = [ ( ite (eq z foo) undef
+            (ite (eq z y) val_500
+               (ite (eq z x) val_300
                   (ite (eq z bar) val_200 (ite (eq z age) val_10 undef)) ) )
         , pc )
       ] )
