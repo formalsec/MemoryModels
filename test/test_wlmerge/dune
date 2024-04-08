@@ -9,5 +9,6 @@
   test_obj_4_2
   test_obj_5_0
   test_obj_5_1
-  test_obj_5_2)
+  test_obj_5_2
+  play)
  (libraries memory_models encoding test))

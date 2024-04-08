@@ -5,6 +5,7 @@ module type S = sig
 
   val create : unit -> t
   val clone : t -> t
+  val merge : t -> t -> pc_value -> t
 
   (** [set o ~field ~data pc] sets the field [field] of the object [o] to [data]
       and returns a list of a pair of resulted object and respective path

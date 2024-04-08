@@ -4,16 +4,8 @@ open Encoding
 type value = Encoding.Expr.t
 type symb_slot = (value * value option) option
 type concrete_table = (string, value option) Hashtbl.t
-
-type record =
-  { concrete : concrete_table
-  ; symbolic : symb_slot
-  }
-
-type t =
-  { record : record
-  ; parent : t option
-  }
+type record = { concrete : concrete_table; symbolic : symb_slot }
+type t = { record : record; parent : t option }
 
 let create_record () : record =
   { concrete = Hashtbl.create 16; symbolic = None }

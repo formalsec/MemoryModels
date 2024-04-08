@@ -27,8 +27,8 @@ let pp_lst ?(pp_sep = pp_print_cut) (pp_v : t -> 'a -> unit) (fmt : t)
   pp_print_list ~pp_sep pp_v fmt lst
 
 let pp_opt (pp_el : t -> 'a -> unit) (fmt : t) (el : 'a option) =
-  pp_print_option pp_el fmt el
+  pp_print_option ~none:(fun _ () -> fprintf fmt "None") pp_el fmt el
 
 let pp_newline fmt () = fprintf fmt "@\n"
 let pp_comma fmt () = pp_print_string fmt ", "
-let pp_semicolon fmt () = fprintf fmt ";@\n"
+let pp_semicolon fmt () = fprintf fmt "; "

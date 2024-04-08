@@ -38,6 +38,6 @@ space-around-arrays=true
 space-around-lists=true
 space-around-records=true
 space-around-variants=true
-type-decl=sparse
+type-decl=compact
 wrap-comments=false
 wrap-fun-args=true

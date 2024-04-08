@@ -9,16 +9,8 @@ module M :
   type pc_value = Encoding.Expr.t
   type symb_slot = (value * value option) option
   type concrete_table = (string, value option) Hashtbl.t
-
-  type record =
-    { concrete : concrete_table
-    ; symbolic : symb_slot
-    }
-
-  type t =
-    { cur : record
-    ; parent : t option
-    }
+  type record = { concrete : concrete_table; symbolic : symb_slot }
+  type t = { cur : record; parent : t option }
 
   let create_record () : record =
     { concrete = Hashtbl.create 16; symbolic = None }
@@ -28,6 +20,9 @@ module M :
   let clone (o : t) : t =
     let new_rec = create_record () in
     { cur = new_rec; parent = Some o }
+
+  let merge (_o1 : t) (_o2 : t) (_pc : pc_value) : t =
+    failwith "Object_mwl.merge not implemented"
 
   let set (o : t) ~(field : value) ~(data : value) (pc : pc_value) :
     (t * pc_value) list =
@@ -146,7 +141,7 @@ module M :
     let ite_expr = mk_ite_has_field l in
     ite_expr
 
-  let rec pp (fmt : Fmt.t) ({ cur; parent } : t) : unit =
+  let rec pp (fmt : Fmt.t) (o : t) : unit =
     let open Fmt in
     let pp_v fmt (field, data) =
       fprintf fmt "%a: %a" pp_str field (pp_opt Expr.pp) data
@@ -157,11 +152,11 @@ module M :
       | Some (field, data) ->
         fprintf fmt "%a: %a" Expr.pp field (pp_opt Expr.pp) data
     in
-    let pp_parent fmt v =
-      pp_opt (fun fmt h -> fprintf fmt "%a@\n<-@\n" pp h) fmt v
+    let pp_record fmt { concrete; symbolic } =
+      fprintf fmt "{{%a}, %a}" pp_concrete concrete pp_symbolic symbolic
     in
-    fprintf fmt "%a{@\n- Concrete table:@\n{%a}@\n- Symbolic slot: %a }"
-      pp_parent parent pp_concrete cur.concrete pp_symbolic cur.symbolic
+    let pp_parent fmt v = pp_opt (fun fmt h -> fprintf fmt "%a" pp h) fmt v in
+    fprintf fmt "%a ;@\n%a " pp_record o.cur pp_parent o.parent
 
   let to_string (o : t) : string = Fmt.asprintf "%a" pp o
   let to_json = to_string
