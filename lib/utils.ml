@@ -4,6 +4,10 @@ module Option = struct
   let map_default f d = function None -> d | Some v -> f v
 end
 
+module List = struct
+  let map_default f d = function [] -> d | l -> f l
+end
+
 module Encoding = struct
   open Encoding
 
