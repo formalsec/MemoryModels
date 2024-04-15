@@ -15,6 +15,7 @@ let or_ = Expr.Bool.or_
 let and_ = Expr.Bool.and_
 let not_ = Expr.Bool.not
 let gt v1 v2 = Expr.(relop Ty.Ty_int Ty.Gt v1 v2)
+let plus v1 v2 = Expr.(binop Ty.Ty_int Ty.Add v1 v2)
 
 let print_get (field : Encoding.Expr.t) l (* (expr : Encoding.Expr.t) *) =
   (* Format.printf "---- get %a : %a ----\n" Encoding.Expr.pp field

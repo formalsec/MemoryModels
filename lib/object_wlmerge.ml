@@ -11,23 +11,23 @@ module M :
   type concrete_table = (string, value option) Hashtbl.t
 
   type record =
-    | Rec of { concrete : concrete_table; symbolic : symb_slot; id : int }
-    | If of { cond : pc_value; then_ : t; else_ : t; id : int }
+    | Rec of { concrete : concrete_table; symbolic : symb_slot; time : int }
+    | If of { cond : pc_value; then_ : t; else_ : t; time : int }
 
   and t = record list
 
-  let id = ref 0
+  let time = ref 0
 
-  let get_new_id () =
-    id := !id + 1;
-    !id
+  let get_new_time () =
+    time := !time + 1;
+    !time
 
-  let create_record ?(id = 0) () : record =
-    Rec { concrete = Hashtbl.create 16; symbolic = None; id }
+  let create_record ?(time = 0) () : record =
+    Rec { concrete = Hashtbl.create 16; symbolic = None; time }
 
-  let create_if_record ?(id = 0) (cond : pc_value) (then_ : t) (else_ : t) :
+  let create_if_record ?(time = 0) (cond : pc_value) (then_ : t) (else_ : t) :
     record =
-    If { cond; then_; else_; id }
+    If { cond; then_; else_; time }
 
   let create () : t = [ create_record () ]
 
@@ -44,11 +44,11 @@ module M :
     in
     let rec pp_record fmt (r : record) =
       match r with
-      | Rec { concrete; symbolic; id } ->
-        fprintf fmt "{%a{%a}, %a}" pp_int id pp_concrete concrete pp_symbolic
+      | Rec { concrete; symbolic; time } ->
+        fprintf fmt "{%a{%a}, %a}" pp_int time pp_concrete concrete pp_symbolic
           symbolic
-      | If { cond; then_; else_; id } ->
-        fprintf fmt "[ %a{%a then %a else %a} ]" pp_int id Expr.pp cond
+      | If { cond; then_; else_; time } ->
+        fprintf fmt "[ %a{%a then %a else %a} ]" pp_int time Expr.pp cond
           (pp_lst ~pp_sep:pp_semicolon pp_record)
           then_
           (pp_lst ~pp_sep:pp_semicolon pp_record)
@@ -62,32 +62,32 @@ module M :
   let to_json = to_string
 
   let clone (o : t) : t =
-    let new_rec = create_record ~id:(get_new_id ()) () in
+    let new_rec = create_record ~time:(get_new_time ()) () in
     new_rec :: o
 
   let merge (o1 : t) (o2 : t) (pc : pc_value) : t =
     let open Utils.List in
     let rec get_common_time (obj1 : t) (obj2 : t) : int =
-      let exists_id id' obj =
+      let exists_time time' obj =
         List.exists
-          (fun x -> match x with Rec { id; _ } | If { id; _ } -> id = id')
+          (fun x -> match x with Rec { time; _ } | If { time; _ } -> time = time')
           obj
       in
       match obj1 with
       | [] -> failwith "object_wlmerge.merge: unexpected case"
-      | [ (Rec { id; _ } | If { id; _ }) ] ->
-        if exists_id id obj2 then id
+      | [ (Rec { time; _ } | If { time; _ }) ] ->
+        if exists_time time obj2 then time
         else failwith "object_wlmerge.merge: unexpected case"
-      | (Rec { id; _ } | If { id; _ }) :: tl ->
-        if exists_id id obj2 then id else get_common_time tl obj2
+      | (Rec { time; _ } | If { time; _ }) :: tl ->
+        if exists_time time obj2 then time else get_common_time tl obj2
     in
-    let diff_ids id' = function Rec { id; _ } | If { id; _ } -> id <> id' in
+    let diff_times time' = function Rec { time; _ } | If { time; _ } -> time <> time' in
 
     let time = get_common_time o1 o2 in
-    let rest_o1, shared_obj = split_while o1 ~f:(diff_ids time) in
-    let rest_o2, _ = split_while o2 ~f:(diff_ids time) in
-    let if_record = create_if_record ~id:(get_new_id ()) pc rest_o1 rest_o2 in
-    let empty_record = create_record ~id:(get_new_id ()) () in
+    let rest_o1, shared_obj = split_while o1 ~f:(diff_times time) in
+    let rest_o2, _ = split_while o2 ~f:(diff_times time) in
+    let if_record = create_if_record ~time:(get_new_time ()) pc rest_o1 rest_o2 in
+    let empty_record = create_record ~time:(get_new_time ()) () in
     empty_record :: if_record :: shared_obj
 
   let set (o : t) ~(field : value) ~(data : value) (pc : pc_value) :
@@ -100,7 +100,7 @@ module M :
         [ (o, pc) ]
       | _ ->
         let new_record = Rec { cur with symbolic = Some (field, Some data) } in
-        let empty_record = create_record ~id:cur.id () in
+        let empty_record = create_record ~time:cur.time () in
         [ (empty_record :: new_record :: tl, pc) ] )
     | _ -> failwith "Object_wlmerge.set: unexpected case"
 
@@ -161,9 +161,14 @@ module M :
           (Some (and_ r b), pvs'')
           parent )
     | If { cond; then_; else_; _ } :: parent -> (
-      let then_r, then_pvs = get_aux p (and_ pc cond) (Some r, []) then_ in
+      let then_r, then_pvs =
+        if is_sat [ pc; cond ] then get_aux p (and_ pc cond) (Some r, []) then_
+        else (None, [])
+      in
       let else_r, else_pvs =
-        get_aux p (and_ pc (not_ cond)) (Some r, []) else_
+        if is_sat [ pc; not_ cond ] then
+          get_aux p (and_ pc (not_ cond)) (Some r, []) else_
+        else (None, [])
       in
       let then_pvs, else_pvs =
         (add_cond then_pvs cond, add_cond else_pvs (not_ cond))
@@ -204,7 +209,7 @@ module M :
         [ (o, pc) ]
       | _ ->
         let new_record = Rec { cur with symbolic = Some (field, None) } in
-        let empty_record = create_record ~id:cur.id () in
+        let empty_record = create_record ~time:cur.time () in
         [ (empty_record :: new_record :: tl, pc) ] )
     | _ -> failwith "Object_wlmerge.delete: unexpected case"
 

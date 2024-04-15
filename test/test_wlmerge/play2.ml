@@ -51,9 +51,10 @@ let () =
 
   let merged_obj = Obj.merge then_obj else_obj cond in
 
-  let merged_obj, pc = get_obj (Obj.set merged_obj ~field:d ~data:val_6 pc) in
+  let _merged_obj, _pc = get_obj (Obj.set merged_obj ~field:d ~data:val_6 pc) in
+  (* print_get a (Obj.get merged_obj x (not_ cond)) *) ()
 
-  print_obj Obj.pp merged_obj;
-  (* Format.printf "has_field: %a\n" Encoding.Expr.pp (Obj.has_field merged_obj x pc); *)
-  (* print_get a (Obj.get merged_obj x pc) *)
-  print_get a (Obj.get merged_obj x pc)
+(* print_obj Obj.pp merged_obj; *)
+(* Format.printf "has_field: %a\n" Encoding.Expr.pp (Obj.has_field merged_obj x pc); *)
+(* print_get a (Obj.get merged_obj x pc) *)
+(* print_get a (Obj.get merged_obj x pc) *)
