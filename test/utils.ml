@@ -13,10 +13,10 @@ let value_bool v = Expr.Bool.v v
 let ite c v1 v2 = Expr.(Bool.ite c v1 v2)
 let or_ = Expr.Bool.or_
 let and_ = Expr.Bool.and_
+let not_ = Expr.Bool.not
 let gt v1 v2 = Expr.(relop Ty.Ty_int Ty.Gt v1 v2)
 
 let print_get (field : Encoding.Expr.t) l (* (expr : Encoding.Expr.t) *) =
-  ignore field;
   (* Format.printf "---- get %a : %a ----\n" Encoding.Expr.pp field
      Encoding.Expr.pp expr *)
   Format.printf "---- get %a : %a ----\n" Encoding.Expr.pp field

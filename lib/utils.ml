@@ -6,6 +6,13 @@ end
 
 module List = struct
   let map_default f d = function [] -> d | l -> f l
+
+  let split_while xs ~f =
+    let rec loop acc = function
+      | hd :: tl when f hd -> loop (hd :: acc) tl
+      | t -> (List.rev acc, t)
+    in
+    loop [] xs
 end
 
 module Encoding = struct

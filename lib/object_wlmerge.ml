@@ -12,7 +12,7 @@ module M :
 
   type record =
     | Rec of { concrete : concrete_table; symbolic : symb_slot; id : int }
-    | If of { cond : pc_value; then_ : t; else_ : t }
+    | If of { cond : pc_value; then_ : t; else_ : t; id : int }
 
   and t = record list
 
@@ -25,17 +25,70 @@ module M :
   let create_record ?(id = 0) () : record =
     Rec { concrete = Hashtbl.create 16; symbolic = None; id }
 
-  let _create_if_record (cond : pc_value) (then_ : t) (else_ : t) : record =
-    If { cond; then_; else_ }
+  let create_if_record ?(id = 0) (cond : pc_value) (then_ : t) (else_ : t) :
+    record =
+    If { cond; then_; else_; id }
 
   let create () : t = [ create_record () ]
+
+  let pp (fmt : Fmt.t) (o : t) : unit =
+    let open Fmt in
+    let pp_v fmt (field, data) =
+      fprintf fmt "%a: %a" pp_str field (pp_opt Expr.pp) data
+    in
+    let pp_concrete fmt tbl = pp_hashtbl ~pp_sep:pp_semicolon pp_v fmt tbl in
+    let pp_symbolic fmt = function
+      | None -> pp_str fmt "None"
+      | Some (field, data) ->
+        fprintf fmt "%a: %a" Expr.pp field (pp_opt Expr.pp) data
+    in
+    let rec pp_record fmt (r : record) =
+      match r with
+      | Rec { concrete; symbolic; id } ->
+        fprintf fmt "{%a{%a}, %a}" pp_int id pp_concrete concrete pp_symbolic
+          symbolic
+      | If { cond; then_; else_; id } ->
+        fprintf fmt "[ %a{%a then %a else %a} ]" pp_int id Expr.pp cond
+          (pp_lst ~pp_sep:pp_semicolon pp_record)
+          then_
+          (pp_lst ~pp_sep:pp_semicolon pp_record)
+          else_
+    in
+    fprintf fmt "[ %a ]"
+      (pp_lst ~pp_sep:(fun fmt () -> fprintf fmt ";@\n") pp_record)
+      o
+
+  let to_string (o : t) : string = Fmt.asprintf "%a" pp o
+  let to_json = to_string
 
   let clone (o : t) : t =
     let new_rec = create_record ~id:(get_new_id ()) () in
     new_rec :: o
 
-  let merge (_o1 : t) (_o2 : t) (_pc : pc_value) : t =
-    failwith "Object_mwl.merge not implemented"
+  let merge (o1 : t) (o2 : t) (pc : pc_value) : t =
+    let open Utils.List in
+    let rec get_common_time (obj1 : t) (obj2 : t) : int =
+      let exists_id id' obj =
+        List.exists
+          (fun x -> match x with Rec { id; _ } | If { id; _ } -> id = id')
+          obj
+      in
+      match obj1 with
+      | [] -> failwith "object_wlmerge.merge: unexpected case"
+      | [ (Rec { id; _ } | If { id; _ }) ] ->
+        if exists_id id obj2 then id
+        else failwith "object_wlmerge.merge: unexpected case"
+      | (Rec { id; _ } | If { id; _ }) :: tl ->
+        if exists_id id obj2 then id else get_common_time tl obj2
+    in
+    let diff_ids id' = function Rec { id; _ } | If { id; _ } -> id <> id' in
+
+    let time = get_common_time o1 o2 in
+    let rest_o1, shared_obj = split_while o1 ~f:(diff_ids time) in
+    let rest_o2, _ = split_while o2 ~f:(diff_ids time) in
+    let if_record = create_if_record ~id:(get_new_id ()) pc rest_o1 rest_o2 in
+    let empty_record = create_record ~id:(get_new_id ()) () in
+    empty_record :: if_record :: shared_obj
 
   let set (o : t) ~(field : value) ~(data : value) (pc : pc_value) :
     (t * pc_value) list =
@@ -47,7 +100,7 @@ module M :
         [ (o, pc) ]
       | _ ->
         let new_record = Rec { cur with symbolic = Some (field, Some data) } in
-        let empty_record = create_record () in
+        let empty_record = create_record ~id:cur.id () in
         [ (empty_record :: new_record :: tl, pc) ] )
     | _ -> failwith "Object_wlmerge.set: unexpected case"
 
@@ -103,9 +156,11 @@ module M :
       match r' with
       | None -> (None, pvs'')
       | Some b ->
-        map_default (get_aux p pc (Some (and_ r b), pvs'')) (None, pvs'') parent
-      )
-    | If { cond; then_; else_ } :: parent -> (
+        map_default
+          (get_aux p pc (Some (and_ r b), pvs''))
+          (Some (and_ r b), pvs'')
+          parent )
+    | If { cond; then_; else_; _ } :: parent -> (
       let then_r, then_pvs = get_aux p (and_ pc cond) (Some r, []) then_ in
       let else_r, else_pvs =
         get_aux p (and_ pc (not_ cond)) (Some r, []) else_
@@ -113,9 +168,12 @@ module M :
       let then_pvs, else_pvs =
         (add_cond then_pvs cond, add_cond else_pvs (not_ cond))
       in
-      let pvs'' = then_pvs @ else_pvs in
+      let pvs'' = pvs @ then_pvs @ else_pvs in
       match (then_r, else_r) with
       (* Needs to revisit this cases *)
+      | None, None when List.length then_pvs != 0 && List.length else_pvs != 0
+        ->
+        (None, pvs'')
       | None, None ->
         map_default (get_aux p pc (Some r, pvs'')) (None, pvs'') parent
       | Some b, None | None, Some b ->
@@ -146,7 +204,7 @@ module M :
         [ (o, pc) ]
       | _ ->
         let new_record = Rec { cur with symbolic = Some (field, None) } in
-        let empty_record = create_record () in
+        let empty_record = create_record ~id:cur.id () in
         [ (empty_record :: new_record :: tl, pc) ] )
     | _ -> failwith "Object_wlmerge.delete: unexpected case"
 
@@ -182,33 +240,4 @@ module M :
     let _, l = get_aux field pc (Some pc, []) o in
     let ite_expr = mk_ite_has_field l in
     ite_expr
-
-  let pp (fmt : Fmt.t) (o : t) : unit =
-    let open Fmt in
-    let pp_v fmt (field, data) =
-      fprintf fmt "%a: %a" pp_str field (pp_opt Expr.pp) data
-    in
-    let pp_concrete fmt tbl = pp_hashtbl ~pp_sep:pp_semicolon pp_v fmt tbl in
-    let pp_symbolic fmt = function
-      | None -> pp_str fmt "None"
-      | Some (field, data) ->
-        fprintf fmt "%a: %a" Expr.pp field (pp_opt Expr.pp) data
-    in
-    let rec pp_record fmt (r : record) =
-      match r with
-      | Rec { concrete; symbolic; _ } ->
-        fprintf fmt "{{%a}, %a}" pp_concrete concrete pp_symbolic symbolic
-      | If { cond; then_; else_ } ->
-        fprintf fmt "[ %a then %a else %a ]" Expr.pp cond
-          (pp_lst ~pp_sep:pp_semicolon pp_record)
-          then_
-          (pp_lst ~pp_sep:pp_semicolon pp_record)
-          else_
-    in
-    fprintf fmt "[ %a ]@."
-      (pp_lst ~pp_sep:(fun fmt () -> fprintf fmt ";@\n") pp_record)
-      o
-
-  let to_string (o : t) : string = Fmt.asprintf "%a" pp o
-  let to_json = to_string
 end
