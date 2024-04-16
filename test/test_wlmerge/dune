@@ -12,5 +12,7 @@
   test_obj_5_2
   test_obj_6_0
   test_obj_6_1
+  test_memory_1
+  test_memory_2
   play2)
  (libraries memory_models encoding test))

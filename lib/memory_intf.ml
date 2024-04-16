@@ -7,6 +7,7 @@ module type S = sig
   val create : unit -> t
   val clone : t -> t
 
+
   (** [insert m o ] inserts the object [o] into memory [m] and returns its
       location. *)
   val insert : t -> object_ -> value
@@ -26,7 +27,7 @@ module type S = sig
 
   (** [get_field m l field pc] gets the value stored at field [field] of the
       object at location [l] in memory [m]. *)
-  val get_field : t -> value -> value -> pc_value -> (value * value list) list
+  val get_field : t -> value -> value -> pc_value -> (value * pc_value) list
 
   (** [has_field m l field pc] checks if an object at location [l] in memory [m]
       has a field [field]. *)
@@ -37,5 +38,4 @@ module type S = sig
   val delete_field : t -> value -> value -> pc_value -> unit
 
   val pp : Fmt.t -> t -> unit
-  val pp_val : Fmt.t -> t -> value -> unit
 end
