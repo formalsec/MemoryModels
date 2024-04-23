@@ -51,7 +51,8 @@ let () =
     Obj.has_field obj foo pc
     = ite (eq foo x) (value_bool true) (value_bool true) );
   assert (Obj.has_field obj banana pc = value_bool true);
-  (* FIXME: To check: [has_field x] Será que isto faz sentido? deverá ter o caso do x=foo? *)
+  assert (Obj.get obj x pc = [ (ite (eq x banana) val_300 val_200, pc) ]);
+
   assert (
     Obj.has_field obj x pc
     = ite (eq x banana) (value_bool true) (value_bool true) );

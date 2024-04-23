@@ -42,8 +42,8 @@ module M :
       | Some (field, data) ->
         fprintf fmt "%a: %a" Expr.pp field (pp_opt Expr.pp) data
     in
-    let rec pp_record fmt (r : record) =
-      match r with
+    let rec pp_record fmt (orec : record) =
+      match orec with
       | Rec { concrete; symbolic; time } ->
         fprintf fmt "{%a{%a}, %a}" pp_int time pp_concrete concrete pp_symbolic
           symbolic
@@ -108,123 +108,92 @@ module M :
     | _ -> failwith "Object_wlmerge.set: unexpected case"
 
   let get_concrete (concrete : concrete_table) (pc : pc_value) (p : value) :
-    pc_value option * (pc_value * value option) list =
+    bool * pc_value * (pc_value * value option) list =
     let find_opt = Hashtbl.find_opt concrete in
     let find = Hashtbl.find concrete in
+    let all_different p keys =
+      List.fold_right (fun k acc -> and_ acc (ne p (str k))) keys true_
+    in
 
     match Expr.view p with
     | Val (Str s) -> (
       let v = find_opt s in
       match v with
-      | Some v' -> (None, [ (true_, v') ])
-      | _ -> (Some true_, []) )
+      | Some v' -> (true, true_, [ (true_, v') ])
+      | _ -> (false, true_, []) )
     | _ -> (
       let keys = Hashtbl.keys concrete in
       let keys' = List.filter (fun k -> is_sat [ eq p (str k); pc ]) keys in
       match keys' with
       | [ k ] ->
-        if pc => eq p (str k) then (None, [ (true_, find k) ])
-        else (Some (ne p (str k)), [ (eq p (str k), find k) ])
+        if pc => eq p (str k) then (true, true_, [ (true_, find k) ])
+        else (false, ne p (str k), [ (eq p (str k), find k) ])
       | _ ->
-        ( Some
-            (List.fold_right
-               (fun k acc -> and_ acc (ne p (str k)))
-               keys' true_ )
+        ( false
+        , all_different p keys'
         , List.map (fun k -> (eq p (str k), find k)) keys' ) )
 
-  let get_record (r : record) (pc : pc_value) (p : value) :
-    pc_value option * (pc_value * value option) list =
-    let open Utils.Option in
-    match r with
+  let rec get_record (orec : record) (pc : pc_value) (p : value) :
+    bool * pc_value * (pc_value * value option) list =
+    match orec with
     | Rec { concrete; symbolic; _ } -> (
       let get_concrete = get_concrete concrete in
 
       match symbolic with
       | Some (p', v) ->
-        if pc => eq p p' then (None, [ (true_, v) ])
+        if pc => eq p p' then (true, true_, [ (true_, v) ])
         else if is_sat [ pc; eq p p' ] then
-          let explore_pc, pvs = get_concrete (and_ pc (ne p p')) p in
-          let explore_pc' =
-            map_default (fun pc -> Some (and_ pc (ne p p'))) None explore_pc
-          in
-          (explore_pc', (eq p p', v) :: pvs)
+          let b, s_pc, pvs = get_concrete (and_ pc (ne p p')) p in
+          let s_pc' = and_ s_pc (ne p p') in
+          (b, s_pc', (eq p p', v) :: pvs)
         else get_concrete pc p
       | None -> get_concrete pc p )
-    | _ -> failwith "object_wlmerge.get_record: unexpected case"
-
-  let rec get_if_record (r : record) (explored_pc : pc_value) (find_any : bool)
-    (pc : pc_value) (p : value) =
-    let add_cond cond = List.map (fun (pc, v) -> (and_ pc cond, v)) in
-    let get_if o cond =
-      if is_sat [ pc; cond ] then
-        get_aux p (and_ pc cond) (find_any, Some explored_pc, []) o
-      else (true, None, [])
-    in
-
-    match r with
     | If { cond; then_; else_; _ } ->
-      let then_b, then_pc, then_pvs = get_if then_ cond in
-      let else_b, else_pc, else_pvs = get_if else_ (not_ cond) in
+      let add_cond cond = List.map (fun (pc, v) -> (and_ pc cond, v)) in
+      if pc => cond then get_object p pc then_
+      else if pc => not_ cond then get_object p pc else_
+      else
+        let then_b, then_pc, then_pvs = get_object p (and_ pc cond) then_ in
+        let else_b, else_pc, else_pvs =
+          get_object p (and_ pc (not_ cond)) else_
+        in
 
-      let then_pvs, else_pvs =
-        (add_cond cond then_pvs, add_cond (not_ cond) else_pvs)
-      in
-      let pvs' = then_pvs @ else_pvs in
+        let then_pvs, else_pvs =
+          (add_cond cond then_pvs, add_cond (not_ cond) else_pvs)
+        in
+        let pvs' = then_pvs @ else_pvs in
 
-      let r' =
-        match (then_b, then_pc, else_b, else_pc) with
-        | true, None, true, None -> None
-        | false, None, false, None -> Some (true_)
-        | true, None, false, None -> Some (not_ cond)
-        | false, None, true, None -> Some cond
-        | true, None, false, Some r -> Some (and_ r (not_ cond))
-        | false, Some r, true, None -> Some (and_ r cond)
-        | false, None, false, Some r -> Some (or_ cond (and_ r (not_ cond)))
-        | false, Some r, false, None -> Some (or_ (not_ cond) (and_ r cond))
-        | false, Some r1, false, Some r2 ->
-          Some (or_ (and_ r1 cond) (and_ r2 (not_ cond)))
-        | _ ->
-          Format.printf "(%b, %a, %b, %a)\n" then_b (Fmt.pp_opt Expr.pp) then_pc
-            else_b (Fmt.pp_opt Expr.pp) else_pc;
-          failwith "object_wlmerge.get_if_record: unexpected case"
-      in
-      (r', pvs')
-    | _ -> failwith "object_wlmerge.get_if_record: unexpected case"
+        let b', s_pc' =
+          match (then_b, else_b) with
+          | true, true -> (true, true_)
+          | true, false -> (false, and_ (not_ cond) else_pc)
+          | false, true -> (false, and_ cond then_pc)
+          | false, false ->
+            (false, or_ (and_ cond then_pc) (and_ (not_ cond) else_pc))
+        in
+
+        (b', s_pc', pvs')
 
   and
-    (* returns (b, explored_pc, pvs)
+    (* returns (b, s_pc, pvs)
        b:
         True = stop searching;
         False = continue searching
-       explore_pc:
-        None = Nothing to consider/stop searching;
-        Some pc = consider pc during searching
+       s_pc:
+        pc to consider during searching
+        it returns true_ when there is nothing to consider
        pvs:
         a list of condition with the respective value
     *)
-    get_aux (p : value) (pc : pc_value)
-    ((r, explored_pc, pvs) :
-      bool * pc_value option * (pc_value * value option) list ) (o : t) :
-    bool * pc_value option * (pc_value * value option) list =
-    (* TODO: pc_value option to pc_value *)
-    let explored_pc = Option.get explored_pc in
-
-    match o with
-    | [] -> (r, Some explored_pc, pvs)
-    | (Rec _ as cur) :: parent -> (
-      let explored_pc', pvs' = get_record cur explored_pc p in
-
-      let pvs'' = pvs @ pvs' in
-      match explored_pc' with
-      | None -> (true, None, pvs'')
-      | Some b -> get_aux p pc (r, Some (and_ explored_pc b), pvs'') parent )
-    | (If _ as cur) :: parent -> (
-      let explored_pc', pvs' = get_if_record cur explored_pc r pc p in
-
-      let pvs'' = pvs @ pvs' in
-      match explored_pc' with
-      | None -> (true, None, pvs'')
-      | Some b -> get_aux p pc (r, Some (and_ explored_pc b), pvs'') parent )
+    get_object (p : value) (pc : pc_value) (o : t) :
+    bool * pc_value * (pc_value * value option) list =
+    List.fold_left
+      (fun (r, s_pc, pvs) orec ->
+        if not r then
+          let r', s_pc', pvs' = get_record orec s_pc p in
+          (r', and_ s_pc s_pc', pvs @ pvs')
+        else (r, s_pc, pvs) )
+      (false, pc, []) o
 
   let mk_ite_get (conds : (pc_value * value option) list) : value =
     if List.exists (fun (_, v) -> Option.is_some v) conds then
@@ -234,8 +203,12 @@ module M :
     else undef
 
   let get (o : t) (field : value) (pc : pc_value) : (value * pc_value) list =
-    let _, _, l = get_aux field pc (false, Some pc, []) o in
+    let _, _, l = get_object field pc o in
     let ite_expr = mk_ite_get l in
+    (* Format.printf "\n----------\nget %a: %a\n\n ite: %a----------\n \n"
+       Expr.pp field
+       (Fmt.pp_lst ~pp_sep:Fmt.pp_semicolon (fun fmt (pc, v) -> Fmt.fprintf fmt "(%a, %a)" Expr.pp pc  Expr.pp (Option.value v ~default:(undef)))) l
+       Expr.pp ite_expr; *)
     [ (ite_expr, pc) ]
 
   let delete (o : t) (field : value) (pc : pc_value) : (t * pc_value) list =
@@ -274,13 +247,13 @@ module M :
     if List.exists (fun (_, v) -> Option.is_some v) conds then
       List.fold_right
         (fun (cond, v) acc ->
-          let v' = map_default (fun _ -> true_) (false_) v in
+          let v' = map_default (fun _ -> true_) false_ v in
           ite cond v' acc )
-        conds (false_)
+        conds false_
     else false_
 
   let has_field (o : t) (field : value) (pc : pc_value) : value =
-    let _, _, l = get_aux field pc (false, Some pc, []) o in
+    let _, _, l = get_object field pc o in
     let ite_expr = mk_ite_has_field l in
     ite_expr
 end

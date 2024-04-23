@@ -151,32 +151,18 @@ let () =
   (* test get with path condition of y > 3 *)
   assert (
     Obj.get merged_obj a cond
-    = [ (ite (and_ (eq a z) cond) val_3 (ite (eq a x) val_4 val_3), cond) ] );
+    = [ (ite (eq a z) val_3 (ite (eq a x) val_4 val_3), cond) ] );
   assert (
     Obj.get merged_obj x cond
-    = [ ( ite (eq x d) val_6
-            (ite
-               (and_ (eq x z) cond)
-               val_3
-               (ite (and_ (eq x b) cond) val_4 val_4) )
+    = [ ( ite (eq x d) val_6 (ite (eq x z) val_3 (ite (eq x b) val_4 val_4))
         , cond )
       ] );
-  print_get b (Obj.get merged_obj b cond);
+  assert (Obj.get merged_obj b cond = [ (ite (eq b z) val_3 val_4, cond) ]);
 
-  (* FIXME: output aceitável? pc = y > 3
-     ite(b = z && y > 3; 3;
-     ite(y > 3; 4; undef)) *)
-  (* assert (Obj.get merged_obj b cond = [ (ite (and_ (eq b z) cond) val_3 val_4, cond) ]); *)
-
-  (* FIXME: output aceitável? pc = y > 3
-     ite(z = d; 6
-     ite(y>3; 3
-     undef))*)
-  print_get z (Obj.get merged_obj z cond);
-  (* assert (Obj.get merged_obj z cond = [ (ite (eq z d) val_6 val_3, cond) ]); *)
+  assert (Obj.get merged_obj z cond = [ (ite (eq z d) val_6 val_3, cond) ]);
   assert (
     Obj.get merged_obj c cond
-    = [ (ite (and_ (eq c z) cond) val_3 (ite (eq c x) val_4 undef), cond) ] );
+    = [ (ite (eq c z) val_3 (ite (eq c x) val_4 undef), cond) ] );
   assert (Obj.get merged_obj d cond = [ (val_6, cond) ]);
 
   (* test get with path condition of y <= 3 *)
@@ -184,21 +170,15 @@ let () =
     Obj.get merged_obj a (not_ cond) = [ (ite (eq a x) val_4 val_3, not_ cond) ] );
   assert (
     Obj.get merged_obj x (not_ cond)
-    = [ ( ite (eq x d) val_6 (ite (and_ (eq x c) (not_ cond)) val_5 val_4)
-        , not_ cond )
-      ] );
+    = [ (ite (eq x d) val_6 (ite (eq x c) val_5 val_4), not_ cond) ] );
   assert (
     Obj.get merged_obj b (not_ cond) = [ (ite (eq b x) val_4 undef, not_ cond) ] );
   assert (
     Obj.get merged_obj z (not_ cond)
     = [ ( ite (eq z d) val_6
-            (ite
-               (and_ (eq z c) (not_ cond))
-               val_5
+            (ite (eq z c) val_5
                (ite (eq z x) val_4 (ite (eq z a) val_3 undef)) )
         , not_ cond )
       ] );
-  assert (
-    Obj.get merged_obj c (not_ cond)
-    = [ (ite (not_ cond) val_5 undef, not_ cond) ] );
+  assert (Obj.get merged_obj c (not_ cond) = [ (val_5, not_ cond) ]);
   assert (Obj.get merged_obj d (not_ cond) = [ (val_6, not_ cond) ])

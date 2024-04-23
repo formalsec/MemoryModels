@@ -130,9 +130,9 @@ module M :
     if List.exists (fun (_, v) -> Option.is_some v) conds then
       List.fold_right
         (fun (cond, v) acc ->
-          let v' = map_default (fun _ -> true_) (false_) v in
+          let v' = map_default (fun _ -> true_) false_ v in
           ite cond v' acc )
-        conds (false_)
+        conds false_
     else false_
 
   let has_field (o : t) (field : value) (pc : pc_value) : value =
