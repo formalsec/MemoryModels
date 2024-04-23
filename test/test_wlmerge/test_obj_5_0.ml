@@ -22,18 +22,14 @@ let () =
   let val_400 = value_int 400 in
   let val_500 = value_int 500 in
   let pc = or_ (eq x foo) (eq x bar) in
-
   let obj = Obj.create () in
   let obj, pc = get_obj (Obj.set obj ~field:foo ~data:val_100 pc) in
   let obj, pc = get_obj (Obj.set obj ~field:bar ~data:val_200 pc) in
   let obj, pc = get_obj (Obj.set obj ~field:age ~data:val_10 pc) in
   let obj, pc = get_obj (Obj.set obj ~field:x ~data:val_300 pc) in
-
   let obj, pc = get_obj (Obj.set obj ~field:bar ~data:val_400 pc) in
   let obj, pc = get_obj (Obj.set obj ~field:y ~data:val_500 pc) in
-
   let obj, pc = get_obj (Obj.delete obj foo pc) in
-
   (* test has_field *)
   assert (Obj.has_field obj foo pc = value_bool false);
   assert (
@@ -57,7 +53,6 @@ let () =
         (ite (eq z y) (value_bool true)
            (ite (eq z bar) (value_bool true)
               (ite (eq z age) (value_bool true) (value_bool false)) ) ) );
-
   (* test get *)
   assert (Obj.get obj foo pc = [ (undef, pc) ]);
   assert (Obj.get obj bar pc = [ (ite (eq bar y) val_500 val_400, pc) ]);

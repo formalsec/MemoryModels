@@ -23,8 +23,8 @@ let () =
   assert (Mem.get m loc = Some obj);
 
   (*********** Delete field foo ***********)
-  Mem.delete_field m loc foo pc ;
-  let obj, pc  = get_obj (Obj.delete obj foo pc) in
+  Mem.delete_field m loc foo pc;
+  let obj, pc = get_obj (Obj.delete obj foo pc) in
   assert (Mem.has_field m loc foo pc = Obj.has_field obj foo pc);
   assert (Mem.get_field m loc foo pc = Obj.get obj foo pc);
   assert (Mem.get m loc = Some obj);
@@ -35,7 +35,7 @@ let () =
   let _ = Mem.set_field m loc ~field:x ~data:val_200 pc in
   let obj, pc = get_obj (Obj.set obj ~field:x ~data:val_200 pc) in
   assert (Mem.has_field m loc x pc = Obj.has_field obj x pc);
-  assert (Mem.get_field m loc x pc = Obj.get obj x pc );
+  assert (Mem.get_field m loc x pc = Obj.get obj x pc);
   assert (Mem.get m loc = Some obj);
 
   (*********** Remove object ***********)
@@ -47,4 +47,4 @@ let () =
   let obj2 = Obj.create () in
   let _ = Mem.set m loc obj2 in
   assert (Mem.get m loc = Some obj2);
-  assert (Mem.get_field m loc foo pc = [(undef, pc)])
+  assert (Mem.get_field m loc foo pc = [ (undef, pc) ])

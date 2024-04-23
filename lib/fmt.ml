@@ -29,12 +29,14 @@ let pp_lst ?(pp_sep = pp_print_cut) (pp_v : t -> 'a -> unit) (fmt : t)
 let pp_opt (pp_el : t -> 'a -> unit) (fmt : t) (el : 'a option) =
   pp_print_option ~none:(fun _ () -> fprintf fmt "None") pp_el fmt el
 
-let pp_vector ?(pp_sep = pp_print_cut) ?(index = true) (pp_v : t -> 'a -> unit) (fmt : t) (v : ('a, _) CCVector.t) =
-  CCVector.iteri (fun i x ->
-    if i > 0 then pp_sep fmt ();
-    if index then fprintf fmt "%d: " i;
-    pp_v fmt x
-  ) v
+let pp_vector ?(pp_sep = pp_print_cut) ?(index = true) (pp_v : t -> 'a -> unit)
+  (fmt : t) (v : ('a, _) CCVector.t) =
+  CCVector.iteri
+    (fun i x ->
+      if i > 0 then pp_sep fmt ();
+      if index then fprintf fmt "%d: " i;
+      pp_v fmt x )
+    v
 
 let pp_newline fmt () = fprintf fmt "@\n"
 let pp_comma fmt () = pp_print_string fmt ", "

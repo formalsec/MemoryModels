@@ -6,16 +6,15 @@ module Mem = Memory_wlmerge
 let () =
   let x = key_s_int "x" in
   let s1 = key_s "s1" in
-  let s2 = key_s "s2" in
+  let _s2 = key_s "s2" in
   let p = key_c "p" in
   let val_3 = value_int 3 in
   let val_x_1 = plus x (value_int 1) in
   let val_4 = value_int 4 in
   let pc = value_bool true in
-  let cond = gt x (value_int 0) in
-
+  let _cond = gt x (value_int 0) in
   (*
-  o := {};    // o : {{}, -, 0}
+     o := {};    // o : {{}, -, 0}
   o.p := 3;   // o : {{p:3}, -, 0}
   o2 := {};    // o : {{p:3}, -, 0} || o2 : {{}, -, 0}
   if (#x > 0){ 
@@ -41,19 +40,14 @@ let () =
 
   TODO: ???_1 o que guarda aqui, já depende da condição
   *)
-
   let mem = Mem.create () in
   let o = Obj.create () in
   let o2 = Obj.create () in
   let loc = Mem.insert mem o in
   let _ = Mem.set_field mem loc ~field:p ~data:val_3 pc in
-  let loc2 = Mem.insert mem o2 in
-
+  let _loc2 = Mem.insert mem o2 in
   let then_mem = Mem.clone mem in
   let else_mem = Mem.clone mem in
-
-  let then_mem = Mem.set_field then_mem loc ~field:s1 ~data:val_x_1 pc in
-
-  let else_mem = Mem.set_field else_mem loc ~field:p ~data:val_4 pc in
-
-()
+  let _then_mem = Mem.set_field then_mem loc ~field:s1 ~data:val_x_1 pc in
+  let _else_mem = Mem.set_field else_mem loc ~field:p ~data:val_4 pc in
+  ()

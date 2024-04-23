@@ -6,7 +6,7 @@ module type S = sig
 
   val create : unit -> t
   val clone : t -> t
-
+  val merge : t -> t -> pc_value -> t
 
   (** [insert m o ] inserts the object [o] into memory [m] and returns its
       location. *)

@@ -68,4 +68,5 @@ let () =
   assert (
     Obj.get merged_obj p pc
     = [ (ite (and_ (eq p s1) cond) val_x_1 (ite (not_ cond) val_4 val_3), pc) ] );
+
   assert (Obj.get merged_obj q pc = [ (val_4, pc) ])

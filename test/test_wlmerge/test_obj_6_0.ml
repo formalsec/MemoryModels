@@ -38,8 +38,10 @@ let () =
 
    R6{{d:6};_}; [ (#y > 3) then R4{{};_;1};R3{{b: 4}; #z: 3; 1} else R5{{c:5};_;2} ]; R2{{};_; 0}; R1:{{a:3}; #x:4; 0}
 
+   o.b with #y > 3 --> ITE(#b == #z , 3, 4)
+
    o.a --> [#y > 3 && #z = a, 3]; [#x = a, 4]; [True, 3]  -> ITE(#y > 3 && #z = a, 3, ITE(#x = a, 4, 3))
-*)
+  *)
   let obj = Obj.create () in
   let obj, pc = get_obj (Obj.set obj ~field:a ~data:val_3 pc) in
   let obj, pc = get_obj (Obj.set obj ~field:x ~data:val_4 pc) in
@@ -163,14 +165,13 @@ let () =
 
   (* FIXME: output aceitável? pc = y > 3
      ite(b = z && y > 3; 3;
-       ite(y > 3; 4; ite(b = x; 4; undef))) *)
+     ite(y > 3; 4; undef)) *)
   (* assert (Obj.get merged_obj b cond = [ (ite (and_ (eq b z) cond) val_3 val_4, cond) ]); *)
 
   (* FIXME: output aceitável? pc = y > 3
      ite(z = d; 6
-       ite(y>3; 3
-         ite(z=x; 4;
-           ite(z = a; 3; undef))))*)
+     ite(y>3; 3
+     undef))*)
   print_get z (Obj.get merged_obj z cond);
   (* assert (Obj.get merged_obj z cond = [ (ite (eq z d) val_6 val_3, cond) ]); *)
   assert (
@@ -199,5 +200,5 @@ let () =
       ] );
   assert (
     Obj.get merged_obj c (not_ cond)
-    = [ (ite (not_ cond) val_5 (ite (eq c x) val_4 undef), not_ cond) ] );
+    = [ (ite (not_ cond) val_5 undef, not_ cond) ] );
   assert (Obj.get merged_obj d (not_ cond) = [ (val_6, not_ cond) ])
