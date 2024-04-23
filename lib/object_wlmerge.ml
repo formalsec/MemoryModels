@@ -111,26 +111,25 @@ module M :
     pc_value option * (pc_value * value option) list =
     let find_opt = Hashtbl.find_opt concrete in
     let find = Hashtbl.find concrete in
-    let bool_true = boolean true in
 
     match Expr.view p with
     | Val (Str s) -> (
       let v = find_opt s in
       match v with
-      | Some v' -> (None, [ (bool_true, v') ])
-      | _ -> (Some bool_true, []) )
+      | Some v' -> (None, [ (true_, v') ])
+      | _ -> (Some true_, []) )
     | _ -> (
       let keys = Hashtbl.keys concrete in
       let keys' = List.filter (fun k -> is_sat [ eq p (str k); pc ]) keys in
       match keys' with
       | [ k ] ->
-        if pc => eq p (str k) then (None, [ (bool_true, find k) ])
+        if pc => eq p (str k) then (None, [ (true_, find k) ])
         else (Some (ne p (str k)), [ (eq p (str k), find k) ])
       | _ ->
         ( Some
             (List.fold_right
                (fun k acc -> and_ acc (ne p (str k)))
-               keys' bool_true )
+               keys' true_ )
         , List.map (fun k -> (eq p (str k), find k)) keys' ) )
 
   let get_record (r : record) (pc : pc_value) (p : value) :
@@ -142,7 +141,7 @@ module M :
 
       match symbolic with
       | Some (p', v) ->
-        if pc => eq p p' then (None, [ (boolean true, v) ])
+        if pc => eq p p' then (None, [ (true_, v) ])
         else if is_sat [ pc; eq p p' ] then
           let explore_pc, pvs = get_concrete (and_ pc (ne p p')) p in
           let explore_pc' =
@@ -175,7 +174,7 @@ module M :
       let r' =
         match (then_b, then_pc, else_b, else_pc) with
         | true, None, true, None -> None
-        | false, None, false, None -> Some (boolean true)
+        | false, None, false, None -> Some (true_)
         | true, None, false, None -> Some (not_ cond)
         | false, None, true, None -> Some cond
         | true, None, false, Some r -> Some (and_ r (not_ cond))
@@ -275,10 +274,10 @@ module M :
     if List.exists (fun (_, v) -> Option.is_some v) conds then
       List.fold_right
         (fun (cond, v) acc ->
-          let v' = map_default (fun _ -> boolean true) (boolean false) v in
+          let v' = map_default (fun _ -> true_) (false_) v in
           ite cond v' acc )
-        conds (boolean false)
-    else boolean false
+        conds (false_)
+    else false_
 
   let has_field (o : t) (field : value) (pc : pc_value) : value =
     let _, _, l = get_aux field pc (false, Some pc, []) o in

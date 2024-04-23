@@ -127,7 +127,7 @@ struct
   let has_field (h : t) (loc : value) (field : value) (pc : pc_value) : value =
     Option.fold (get h loc)
       ~some:(fun o -> O.has_field o field pc)
-      ~none:(boolean false)
+      ~none:(false_)
 
   let set_field (h : t) (l : value) ~(field : value) ~(data : value)
     (pc : pc_value) : unit =

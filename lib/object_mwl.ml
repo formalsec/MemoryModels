@@ -40,18 +40,17 @@ module M :
     pc_value option * (pc_value * value option) list =
     let find_opt = Hashtbl.find_opt concrete in
     let find = Hashtbl.find concrete in
-    let bool_true = boolean true in
 
     match Expr.view p with
     | Val (Str s) -> (
       let v = find_opt s in
-      match v with Some v' -> (None, [ (bool_true, v') ]) | _ -> (Some pc, []) )
+      match v with Some v' -> (None, [ (true_, v') ]) | _ -> (Some pc, []) )
     | _ -> (
       let keys = Hashtbl.keys concrete in
       let keys' = List.filter (fun k -> is_sat [ eq p (str k); pc ]) keys in
       match keys' with
       | [ k ] ->
-        if pc => eq p (str k) then (None, [ (bool_true, find k) ])
+        if pc => eq p (str k) then (None, [ (true_, find k) ])
         else (Some (and_ pc (ne p (str k))), [ (eq p (str k), find k) ])
       | _ ->
         ( Some (List.fold_right (fun k acc -> and_ acc (ne p (str k))) keys' pc)
@@ -63,7 +62,7 @@ module M :
 
     match symbolic with
     | Some (p', v) ->
-      if pc => eq p p' then (None, [ (boolean true, v) ])
+      if pc => eq p p' then (None, [ (true_, v) ])
       else if is_sat [ pc; eq p p' ] then
         let b, pvs = get_concrete (and_ pc (ne p p')) p in
         (b, (eq p p', v) :: pvs)
@@ -131,10 +130,10 @@ module M :
     if List.exists (fun (_, v) -> Option.is_some v) conds then
       List.fold_right
         (fun (cond, v) acc ->
-          let v' = map_default (fun _ -> boolean true) (boolean false) v in
+          let v' = map_default (fun _ -> true_) (false_) v in
           ite cond v' acc )
-        conds (boolean false)
-    else boolean false
+        conds (false_)
+    else false_
 
   let has_field (o : t) (field : value) (pc : pc_value) : value =
     let l = get_aux field pc (Some pc, []) o in
