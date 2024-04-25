@@ -1,12 +1,13 @@
 open Utils.Encoding
-open Encoding
+open Utils.Option
+open Smtml
 
 module M :
   Object_intf2.S
-    with type value = Encoding.Expr.t
-     and type pc_value = Encoding.Expr.t = struct
-  type pc_value = Encoding.Expr.t
-  type value = Encoding.Expr.t
+    with type value = Smtml.Expr.t
+     and type pc_value = Smtml.Expr.t = struct
+  type pc_value = Smtml.Expr.t
+  type value = Smtml.Expr.t
   type symb_slot = (value * value option) option
   type concrete_table = (string, value option) Hashtbl.t
 
@@ -70,7 +71,12 @@ module M :
     new_rec :: o
 
   let merge (o1 : t) (o2 : t) (pc : pc_value) : t =
-    let open Utils.List in
+    let split_while xs ~f =
+      let rec loop acc = function
+        | hd :: tl when f hd -> loop (hd :: acc) tl
+        | t -> (List.rev acc, t)
+      in
+      loop [] xs in 
     let rec get_common_time (obj1 : t) (obj2 : t) : int =
       let exists_time time' =
         List.exists (fun x ->
@@ -260,7 +266,6 @@ module M :
     | _ -> assert false
 
   let mk_ite_has_field (conds : (pc_value * value option) list) : value =
-    let open Utils.Option in
     if List.exists (fun (_, v) -> Option.is_some v) conds then
       List.fold_right
         (fun (cond, v) acc ->

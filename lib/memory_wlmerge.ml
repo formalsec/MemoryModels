@@ -1,15 +1,16 @@
 open Utils.Encoding
-open Encoding
+open Utils.Option
+open Smtml
 
 module Make
     (O : Object_intf2.S
-           with type value = Encoding.Expr.t
-            and type pc_value = Encoding.Expr.t) =
+           with type value = Smtml.Expr.t
+            and type pc_value = Smtml.Expr.t) =
 struct
   module IntSet = Set.Make (Int)
 
-  type value = Encoding.Expr.t
-  type pc_value = Encoding.Expr.t
+  type value = Smtml.Expr.t
+  type pc_value = Smtml.Expr.t
   type object_ = O.t
 
   type heap_rec =
@@ -110,7 +111,6 @@ struct
     aux h loc false
 
   let get (h : t) (loc : value) : object_ option =
-    let open Utils.Option in
     let+ obj, from_parent = find h loc in
     match from_parent with
     | false -> obj
@@ -151,8 +151,8 @@ end
 
 module M :
   Memory_intf.S
-    with type value = Encoding.Expr.t
-     and type pc_value = Encoding.Expr.t
+    with type value = Smtml.Expr.t
+     and type pc_value = Smtml.Expr.t
      and type object_ = Object_wlmerge.M.t =
   Make (Object_wlmerge.M)
 

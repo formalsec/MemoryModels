@@ -1,4 +1,4 @@
-open Encoding
+open Smtml
 open Memory_models
 
 let eq v1 v2 = Expr.(relop Ty.Ty_bool Ty.Eq v1 v2)
@@ -17,12 +17,12 @@ let not_ = Expr.Bool.not
 let gt v1 v2 = Expr.(relop Ty.Ty_int Ty.Gt v1 v2)
 let plus v1 v2 = Expr.(binop Ty.Ty_int Ty.Add v1 v2)
 
-let print_get (field : Encoding.Expr.t) l (* (expr : Encoding.Expr.t) *) =
-  (* Format.printf "---- get %a : %a ----\n" Encoding.Expr.pp field
-     Encoding.Expr.pp expr *)
-  Format.printf "---- get %a : %a ----\n" Encoding.Expr.pp field
+let print_get (field : Smtml.Expr.t) l (* (expr : Smtml.Expr.t) *) =
+  (* Format.printf "---- get %a : %a ----\n" Smtml.Expr.pp field
+     Smtml.Expr.pp expr *)
+  Format.printf "---- get %a : %a ----\n" Smtml.Expr.pp field
     (Fmt.pp_lst ~pp_sep:Fmt.pp_semicolon (fun fmt (k, v) ->
-         Format.fprintf fmt "(%a, %a)" Encoding.Expr.pp k Encoding.Expr.pp v )
+         Format.fprintf fmt "(%a, %a)" Smtml.Expr.pp k Smtml.Expr.pp v )
     )
     l
 

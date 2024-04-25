@@ -1,12 +1,13 @@
+open Utils.Option
 open Utils.Encoding
-open Encoding
+open Smtml
 
 module M :
   Object_intf.S
-    with type value = Encoding.Expr.t
-     and type pc_value = Encoding.Expr.t = struct
-  type value = Encoding.Expr.t
-  type pc_value = Encoding.Expr.t
+    with type value = Smtml.Expr.t
+     and type pc_value = Smtml.Expr.t = struct
+  type value = Smtml.Expr.t
+  type pc_value = Smtml.Expr.t
   type symb_slot = (value * value option) option
   type concrete_table = (string, value option) Hashtbl.t
   type record = { concrete : concrete_table; symbolic : symb_slot }
@@ -72,7 +73,6 @@ module M :
   let rec get_aux (p : value) (pc : pc_value)
     ((r, pvs) : pc_value option * (pc_value * value option) list)
     { cur; parent } : (pc_value * value option) list =
-    let open Utils.Option in
     let r =
       match r with
       | Some r -> r
@@ -126,7 +126,6 @@ module M :
         o.cur.concrete []
 
   let mk_ite_has_field (conds : (pc_value * value option) list) : value =
-    let open Utils.Option in
     if List.exists (fun (_, v) -> Option.is_some v) conds then
       List.fold_right
         (fun (cond, v) acc ->

@@ -11,7 +11,7 @@ bug-reports: "https://github.com/formalsec/MemoryModels/issues"
 depends: [
   "ocaml" {>= "4.14.0"}
   "dune" {>= "3.2"}
-  "encoding"
+  "smtml"
   "bisect_ppx" {with-test & >= "2.5.0"}
   "odoc" {with-doc}
 ]
@@ -31,5 +31,5 @@ build: [
 ]
 dev-repo: "git+https://github.com/formalsec/MemoryModels.git"
 pin-depends: [
-   [ "encoding.dev" "git+https://github.com/formalsec/encoding#25c6021256a995d84e62a358e51451bc710210f7"]
+   [ "smtml.dev" "git+https://github.com/formalsec/smtml#74f6547ab2afc4034456624d7d5d69f1a805ab5a"]
 ]

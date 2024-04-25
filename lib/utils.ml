@@ -4,19 +4,8 @@ module Option = struct
   let map_default f d = function None -> d | Some v -> f v
 end
 
-module List = struct
-  let map_default f d = function [] -> d | l -> f l
-
-  let split_while xs ~f =
-    let rec loop acc = function
-      | hd :: tl when f hd -> loop (hd :: acc) tl
-      | t -> (List.rev acc, t)
-    in
-    loop [] xs
-end
-
 module Encoding = struct
-  open Encoding
+  open Smtml
 
   type t = Expr.t
 
@@ -32,6 +21,12 @@ module Encoding = struct
   let and_ v1 v2 = Expr.Bool.and_ v1 v2
   let or_ v1 v2 = Expr.Bool.or_ v1 v2
   let is_val v = match Expr.view v with Val _ -> true | _ -> false
-  let is_sat (exprs : t list) : bool = Solver.Z3_batch.check solver exprs
+  let is_sat (exprs : t list) : bool = 
+    match Solver.Z3_batch.check solver exprs with
+    | `Sat -> true
+    | `Unsat -> false
+    | `Unknown ->
+      Format.eprintf "Unknown exprs: %a@." Smtml.Expr.pp_list exprs; assert false
+
   let ( => ) (e1 : t) (e2 : t) : bool = not (is_sat [ and_ e1 (not_ e2) ])
 end

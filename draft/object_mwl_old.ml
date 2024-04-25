@@ -1,7 +1,7 @@
 open Utils.Encoding
-open Encoding
+open Smtml
 
-type value = Encoding.Expr.t
+type value = Smtml.Expr.t
 type symb_slot = (value * value option) option
 type concrete_table = (string, value option) Hashtbl.t
 type record = { concrete : concrete_table; symbolic : symb_slot }

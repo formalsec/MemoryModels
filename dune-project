@@ -20,7 +20,7 @@
   (depends 
     (ocaml (>= "4.14.0")) 
     dune
-    encoding
+    smtml
     (bisect_ppx (and :with-test (>= "2.5.0"))))
   (tags
     (topics "to describe" your project)))

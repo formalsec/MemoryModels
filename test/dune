@@ -1,4 +1,4 @@
 (library
  (name test)
  (modules utils)
- (libraries encoding memory_models))
+ (libraries smtml memory_models))

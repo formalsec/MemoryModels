@@ -1,6 +1,6 @@
 (library
  (name memory_models)
  (public_name memory_models)
- (libraries encoding)
+ (libraries smtml)
  (instrumentation
   (backend bisect_ppx)))
