@@ -2,7 +2,7 @@ open Utils.Encoding
 open Encoding
 
 module M :
-  Object_intf.S
+  Object_intf2.S
     with type value = Encoding.Expr.t
      and type pc_value = Encoding.Expr.t = struct
   type pc_value = Encoding.Expr.t
@@ -13,6 +13,7 @@ module M :
   type record =
     | Rec of { concrete : concrete_table; symbolic : symb_slot; time : int }
     | If of { cond : pc_value; then_ : t; else_ : t; time : int }
+    | Empty of int
 
   and t = record list
 
@@ -22,6 +23,8 @@ module M :
     time := !time + 1;
     !time
 
+  let create_empty_record ?(time = 0) () : record = Empty time
+
   let create_record ?(time = 0) () : record =
     Rec { concrete = Hashtbl.create 16; symbolic = None; time }
 
@@ -29,7 +32,7 @@ module M :
     record =
     If { cond; then_; else_; time }
 
-  let create () : t = [ create_record () ]
+  let create () : t = [ create_empty_record () ]
 
   let pp (fmt : Fmt.t) (o : t) : unit =
     let open Fmt in
@@ -53,6 +56,7 @@ module M :
           then_
           (pp_lst ~pp_sep:pp_semicolon pp_record)
           else_
+      | Empty time -> fprintf fmt "{Empty:%a}" pp_int time
     in
     fprintf fmt "[ %a ]"
       (pp_lst ~pp_sep:(fun fmt () -> fprintf fmt "; ") pp_record)
@@ -62,7 +66,7 @@ module M :
   let to_json = to_string
 
   let clone (o : t) : t =
-    let new_rec = create_record ~time:(get_new_time ()) () in
+    let new_rec = create_empty_record ~time:(get_new_time ()) () in
     new_rec :: o
 
   let merge (o1 : t) (o2 : t) (pc : pc_value) : t =
@@ -70,18 +74,19 @@ module M :
     let rec get_common_time (obj1 : t) (obj2 : t) : int =
       let exists_time time' =
         List.exists (fun x ->
-            match x with Rec { time; _ } | If { time; _ } -> time = time' )
+            match x with
+            | Rec { time; _ } | If { time; _ } | Empty time -> time = time' )
       in
       match obj1 with
       | [] -> failwith "object_wlmerge.merge: unexpected case"
-      | [ (Rec { time; _ } | If { time; _ }) ] ->
+      | [ (Rec { time; _ } | If { time; _ } | Empty time) ] ->
         if exists_time time obj2 then time
         else failwith "object_wlmerge.merge: unexpected case"
-      | (Rec { time; _ } | If { time; _ }) :: tl ->
+      | (Rec { time; _ } | If { time; _ } | Empty time) :: tl ->
         if exists_time time obj2 then time else get_common_time tl obj2
     in
     let diff_times time' = function
-      | Rec { time; _ } | If { time; _ } -> time <> time'
+      | Rec { time; _ } | If { time; _ } | Empty time -> time <> time'
     in
 
     let time = get_common_time o1 o2 in
@@ -90,11 +95,14 @@ module M :
     let if_record =
       create_if_record ~time:(get_new_time ()) pc rest_o1 rest_o2
     in
-    let empty_record = create_record ~time:(get_new_time ()) () in
+    let empty_record = create_empty_record ~time:(get_new_time ()) () in
     empty_record :: if_record :: shared_obj
 
   let set (o : t) ~(field : value) ~(data : value) (pc : pc_value) :
     (t * pc_value) list =
+    let o =
+      match o with Empty t :: tl -> create_record ~time:t () :: tl | _ -> o
+    in
     match o with
     | Rec cur :: tl -> (
       match Expr.view field with
@@ -103,7 +111,7 @@ module M :
         [ (o, pc) ]
       | _ ->
         let new_record = Rec { cur with symbolic = Some (field, Some data) } in
-        let empty_record = create_record ~time:cur.time () in
+        let empty_record = create_empty_record ~time:cur.time () in
         [ (empty_record :: new_record :: tl, pc) ] )
     | _ -> failwith "Object_wlmerge.set: unexpected case"
 
@@ -171,8 +179,8 @@ module M :
           | false, false ->
             (false, or_ (and_ cond then_pc) (and_ (not_ cond) else_pc))
         in
-
         (b', s_pc', pvs')
+    | Empty _ -> (false, true_, [])
 
   and
     (* returns (b, s_pc, pvs)
@@ -212,6 +220,12 @@ module M :
     [ (ite_expr, pc) ]
 
   let delete (o : t) (field : value) (pc : pc_value) : (t * pc_value) list =
+    let o =
+      match o with
+      | [ Empty _ ] -> o
+      | Empty t :: tl -> create_record ~time:t () :: tl
+      | _ -> o
+    in
     match o with
     | Rec cur :: tl -> (
       match Expr.view field with
@@ -220,8 +234,9 @@ module M :
         [ (o, pc) ]
       | _ ->
         let new_record = Rec { cur with symbolic = Some (field, None) } in
-        let empty_record = create_record ~time:cur.time () in
+        let empty_record = create_empty_record ~time:cur.time () in
         [ (empty_record :: new_record :: tl, pc) ] )
+    | [ Empty _ ] -> [ (o, pc) ]
     | _ -> failwith "Object_wlmerge.delete: unexpected case"
 
   let to_list (o : t) : (value * value) list =
@@ -231,6 +246,7 @@ module M :
       Hashtbl.fold
         (fun k v acc -> match v with Some v -> (str k, v) :: acc | None -> acc)
         cur.concrete []
+    | [ Empty _ ] -> []
     | _ -> assert false
 
   let get_fields (o : t) : value list =
@@ -240,6 +256,7 @@ module M :
       Hashtbl.fold
         (fun k v acc -> match v with Some _ -> str k :: acc | None -> acc)
         cur.concrete []
+    | [ Empty _ ] -> []
     | _ -> assert false
 
   let mk_ite_has_field (conds : (pc_value * value option) list) : value =

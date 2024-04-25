@@ -2,7 +2,7 @@ open Utils.Encoding
 open Encoding
 
 module Make
-    (O : Object_intf.S
+    (O : Object_intf2.S
            with type value = Encoding.Expr.t
             and type pc_value = Encoding.Expr.t) =
 struct
@@ -13,8 +13,8 @@ struct
   type object_ = O.t
 
   type heap_rec =
-    { map : (object_ option, CCVector.rw) CCVector.t
-    ; mutable time : int
+    { map : (int, object_ option) Hashtbl.t
+    ; time : int
     ; changes : IntSet.t ref
     }
 
@@ -28,16 +28,16 @@ struct
     !time
 
   let create () : t =
-    [ { map = CCVector.create (); time = 0; changes = ref IntSet.empty } ]
+    [ { map = Hashtbl.create 512; time = 0; changes = ref IntSet.empty } ]
 
   let pp_loc (fmt : Fmt.t) (loc : value) : unit = Expr.pp fmt loc
 
   let pp (fmt : Fmt.t) (h : t) =
     let open Fmt in
-    let pp_v fmt data = fprintf fmt "%a" (pp_opt O.pp) data in
+    let pp_v fmt (loc, o) = fprintf fmt "%a=>%a" pp_int loc (pp_opt O.pp) o in
     let pp_rec fmt { map; time; _ } =
       fprintf fmt "%a={@\n %a }" pp_int time
-        (pp_vector ~pp_sep:(fun fmt () -> fprintf fmt "@\n ") pp_v)
+        (pp_hashtbl ~pp_sep:(fun fmt () -> fprintf fmt "@\n ") pp_v)
         map
     in
     fprintf fmt "%a"
@@ -55,21 +55,21 @@ struct
       let changes = IntSet.union !(hr1.changes) !(hr2.changes) in
       IntSet.iter
         (fun l ->
-          let o1 = CCVector.get hr1.map l in
-          let o2 = CCVector.get hr2.map l in
+          let o1 = Hashtbl.find hr1.map l in
+          let o2 = Hashtbl.find hr2.map l in
           match (o1, o2) with
           | None, None -> failwith "TODO: merge"
           | Some _, None | None, Some _ -> failwith "TODO: merge"
-          | Some o1, Some o2 ->
-            let new_o = O.merge o1 o2 cond in
-            CCVector.set h.map l (Some new_o) )
+          | Some o1', Some o2' ->
+            let new_o = O.merge o1' o2' cond in
+            Hashtbl.replace h.map l (Some new_o) )
         changes;
       { h with time = get_new_time () } :: tl
     | _ -> failwith "memory_wlmerge.merge: Unexepected cases"
 
   let clone (h : t) : t =
     (* TODO: Vazio ou somente alocar quando queremos? *)
-    { map = CCVector.create ()
+    { map = Hashtbl.create 64
     ; time = get_new_time ()
     ; changes = ref IntSet.empty
     }
@@ -78,8 +78,7 @@ struct
   let insert (h : t) (o : object_) : value =
     let h = List.hd h in
     let next = !loc in
-    (* FIXME: this insert is dangerous because it may change indexes *)
-    CCVector.insert h.map next (Some o);
+    Hashtbl.add h.map next (Some o);
     loc := !loc + 1;
     h.changes := IntSet.add next !(h.changes);
     Expr.(make @@ Val (Int next))
@@ -87,17 +86,13 @@ struct
   let remove (h : t) (l : value) : unit =
     let h = List.hd h in
     let loc = get_loc l in
-    if CCVector.length h.map <= loc then
-      CCVector.resize_with_init h.map ~init:None (loc + 1)
-    else CCVector.set h.map loc None;
+    Hashtbl.replace h.map loc None;
     h.changes := IntSet.add loc !(h.changes)
 
   let set (h : t) (l : value) (o : object_) : unit =
     let h = List.hd h in
     let loc = get_loc l in
-    if CCVector.length h.map <= loc then
-      CCVector.resize_with_init h.map ~init:None (loc + 1);
-    CCVector.set h.map loc (Some o);
+    Hashtbl.replace h.map loc (Some o);
     h.changes := IntSet.add loc !(h.changes)
 
   let find (h : t) (l : value) : (object_ * bool) option =
@@ -107,7 +102,7 @@ struct
       | [] -> None
       | { map; _ } :: tl -> (
         try
-          match CCVector.get map loc with
+          match Hashtbl.find map loc with
           | Some o -> Some (o, from_parent)
           | None -> aux tl loc true
         with Invalid_argument _ -> aux tl loc true )
