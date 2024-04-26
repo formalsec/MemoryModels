@@ -3,9 +3,8 @@ open Utils.Encoding
 open Smtml
 
 module M :
-  Object_intf.S
-    with type value = Smtml.Expr.t
-     and type pc_value = Smtml.Expr.t = struct
+  Object_intf.S with type value = Smtml.Expr.t and type pc_value = Smtml.Expr.t =
+struct
   type value = Smtml.Expr.t
   type pc_value = Smtml.Expr.t
   type symb_slot = (value * value option) option

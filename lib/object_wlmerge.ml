@@ -3,9 +3,8 @@ open Utils.Option
 open Smtml
 
 module M :
-  Object_intf2.S
-    with type value = Smtml.Expr.t
-     and type pc_value = Smtml.Expr.t = struct
+  Object_intf2.S with type value = Smtml.Expr.t and type pc_value = Smtml.Expr.t =
+struct
   type pc_value = Smtml.Expr.t
   type value = Smtml.Expr.t
   type symb_slot = (value * value option) option
@@ -76,7 +75,8 @@ module M :
         | hd :: tl when f hd -> loop (hd :: acc) tl
         | t -> (List.rev acc, t)
       in
-      loop [] xs in 
+      loop [] xs
+    in
     let rec get_common_time (obj1 : t) (obj2 : t) : int =
       let exists_time time' =
         List.exists (fun x ->

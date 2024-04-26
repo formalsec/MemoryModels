@@ -43,11 +43,11 @@ let () =
   let mem = Mem.create () in
   let o = Obj.create () in
   let o2 = Obj.create () in
-  let loc = Mem.insert mem o in
-  let _ = Mem.set_field mem loc ~field:p ~data:val_3 pc in
-  let _loc2 = Mem.insert mem o2 in
+  let loc = Mem.alloc mem o in
+  let _ = Mem.set mem loc ~field:p ~data:val_3 pc in
+  let _loc2 = Mem.alloc mem o2 in
   let then_mem = Mem.clone mem in
   let else_mem = Mem.clone mem in
-  let _then_mem = Mem.set_field then_mem loc ~field:s1 ~data:val_x_1 pc in
-  let _else_mem = Mem.set_field else_mem loc ~field:p ~data:val_4 pc in
+  let _then_mem = Mem.set then_mem loc ~field:s1 ~data:val_x_1 pc in
+  let _else_mem = Mem.set else_mem loc ~field:p ~data:val_4 pc in
   ()

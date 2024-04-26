@@ -41,15 +41,15 @@ let () =
   let mem = Mem.create () in
   let o = Obj.create () in
   let o2 = Obj.create () in
-  let loc = Mem.insert mem o in
-  let loc2 = Mem.insert mem o2 in
-  let _ = Mem.set_field mem loc ~field:a ~data:val_3 pc in
-  let _ = Mem.set_field mem loc2 ~field:x ~data:val_4 pc in
+  let loc = Mem.alloc mem o in
+  let loc2 = Mem.alloc mem o2 in
+  let _ = Mem.set mem loc ~field:a ~data:val_3 pc in
+  let _ = Mem.set mem loc2 ~field:x ~data:val_4 pc in
   let then_mem = Mem.clone mem in
   let else_mem = Mem.clone mem in
-  let _ = Mem.set_field then_mem loc ~field:z ~data:val_3 pc in
+  let _ = Mem.set then_mem loc ~field:z ~data:val_3 pc in
   Format.printf "----Memory then_mem: ----\n%a\n\n\n" Mem.pp then_mem;
-  let _ = Mem.set_field else_mem loc ~field:c ~data:val_5 pc in
+  let _ = Mem.set else_mem loc ~field:c ~data:val_5 pc in
   Format.printf "----Memory else_mem: ----\n%a\n\n\n" Mem.pp else_mem;
   let merged_mem = Mem.merge then_mem else_mem cond in
   Format.printf "----Memory merged_mem: ----\n%a\n" Mem.pp merged_mem;

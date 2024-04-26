@@ -22,8 +22,7 @@ let print_get (field : Smtml.Expr.t) l (* (expr : Smtml.Expr.t) *) =
      Smtml.Expr.pp expr *)
   Format.printf "---- get %a : %a ----\n" Smtml.Expr.pp field
     (Fmt.pp_lst ~pp_sep:Fmt.pp_semicolon (fun fmt (k, v) ->
-         Format.fprintf fmt "(%a, %a)" Smtml.Expr.pp k Smtml.Expr.pp v )
-    )
+         Format.fprintf fmt "(%a, %a)" Smtml.Expr.pp k Smtml.Expr.pp v ) )
     l
 
 let print_obj pp_obj obj =

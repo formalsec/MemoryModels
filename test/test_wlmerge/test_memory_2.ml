@@ -14,23 +14,23 @@ let () =
 
   (* Create memory with 5 objects *)
   let m = Mem.create () in
-  let loc1 = Mem.insert m obj1 in
-  let loc2 = Mem.insert m obj2 in
-  let loc3 = Mem.insert m obj3 in
-  let loc4 = Mem.insert m obj4 in
-  let loc5 = Mem.insert m obj5 in
+  let loc1 = Mem.alloc m obj1 in
+  let loc2 = Mem.alloc m obj2 in
+  let loc3 = Mem.alloc m obj3 in
+  let loc4 = Mem.alloc m obj4 in
+  let loc5 = Mem.alloc m obj5 in
 
   (* Add fields to objects *)
-  let _ = Mem.set_field m loc1 ~field:(key_c "a") ~data:(value_int 100) pc in
-  let _ = Mem.set_field m loc1 ~field:(key_c "b") ~data:(value_int 200) pc in
-  let _ = Mem.set_field m loc2 ~field:(key_c "c") ~data:(value_int 300) pc in
-  let _ = Mem.set_field m loc2 ~field:(key_c "d") ~data:(value_int 400) pc in
-  let _ = Mem.set_field m loc3 ~field:(key_c "e") ~data:(value_int 500) pc in
-  let _ = Mem.set_field m loc3 ~field:(key_c "f") ~data:(value_int 600) pc in
-  let _ = Mem.set_field m loc4 ~field:(key_c "g") ~data:(value_int 700) pc in
-  let _ = Mem.set_field m loc4 ~field:(key_c "h") ~data:(value_int 800) pc in
-  let _ = Mem.set_field m loc5 ~field:(key_c "i") ~data:(value_int 900) pc in
-  let _ = Mem.set_field m loc5 ~field:(key_c "j") ~data:(value_int 1000) pc in
+  let _ = Mem.set m loc1 ~field:(key_c "a") ~data:(value_int 100) pc in
+  let _ = Mem.set m loc1 ~field:(key_c "b") ~data:(value_int 200) pc in
+  let _ = Mem.set m loc2 ~field:(key_c "c") ~data:(value_int 300) pc in
+  let _ = Mem.set m loc2 ~field:(key_c "d") ~data:(value_int 400) pc in
+  let _ = Mem.set m loc3 ~field:(key_c "e") ~data:(value_int 500) pc in
+  let _ = Mem.set m loc3 ~field:(key_c "f") ~data:(value_int 600) pc in
+  let _ = Mem.set m loc4 ~field:(key_c "g") ~data:(value_int 700) pc in
+  let _ = Mem.set m loc4 ~field:(key_c "h") ~data:(value_int 800) pc in
+  let _ = Mem.set m loc5 ~field:(key_c "i") ~data:(value_int 900) pc in
+  let _ = Mem.set m loc5 ~field:(key_c "j") ~data:(value_int 1000) pc in
 
   let obj1, pc =
     get_obj (Obj.set obj1 ~field:(key_c "a") ~data:(value_int 100) pc)
@@ -63,22 +63,16 @@ let () =
     get_obj (Obj.set obj5 ~field:(key_c "j") ~data:(value_int 1000) pc)
   in
 
-  assert (Mem.get m loc1 = Some obj1);
-  assert (Mem.get m loc2 = Some obj2);
-  assert (Mem.get m loc3 = Some obj3);
-  assert (Mem.get m loc4 = Some obj4);
-  assert (Mem.get m loc5 = Some obj5);
-
-  assert (Mem.get_field m loc1 (key_c "a") pc = Obj.get obj1 (key_c "a") pc);
-  assert (Mem.get_field m loc1 (key_c "b") pc = Obj.get obj1 (key_c "b") pc);
-  assert (Mem.get_field m loc2 (key_c "c") pc = Obj.get obj2 (key_c "c") pc);
-  assert (Mem.get_field m loc2 (key_c "d") pc = Obj.get obj2 (key_c "d") pc);
-  assert (Mem.get_field m loc3 (key_c "e") pc = Obj.get obj3 (key_c "e") pc);
-  assert (Mem.get_field m loc3 (key_c "f") pc = Obj.get obj3 (key_c "f") pc);
-  assert (Mem.get_field m loc4 (key_c "g") pc = Obj.get obj4 (key_c "g") pc);
-  assert (Mem.get_field m loc4 (key_c "h") pc = Obj.get obj4 (key_c "h") pc);
-  assert (Mem.get_field m loc5 (key_c "i") pc = Obj.get obj5 (key_c "i") pc);
-  assert (Mem.get_field m loc5 (key_c "j") pc = Obj.get obj5 (key_c "j") pc);
+  assert (Mem.get m loc1 (key_c "a") pc = Obj.get obj1 (key_c "a") pc);
+  assert (Mem.get m loc1 (key_c "b") pc = Obj.get obj1 (key_c "b") pc);
+  assert (Mem.get m loc2 (key_c "c") pc = Obj.get obj2 (key_c "c") pc);
+  assert (Mem.get m loc2 (key_c "d") pc = Obj.get obj2 (key_c "d") pc);
+  assert (Mem.get m loc3 (key_c "e") pc = Obj.get obj3 (key_c "e") pc);
+  assert (Mem.get m loc3 (key_c "f") pc = Obj.get obj3 (key_c "f") pc);
+  assert (Mem.get m loc4 (key_c "g") pc = Obj.get obj4 (key_c "g") pc);
+  assert (Mem.get m loc4 (key_c "h") pc = Obj.get obj4 (key_c "h") pc);
+  assert (Mem.get m loc5 (key_c "i") pc = Obj.get obj5 (key_c "i") pc);
+  assert (Mem.get m loc5 (key_c "j") pc = Obj.get obj5 (key_c "j") pc);
 
   assert (
     Mem.has_field m loc1 (key_c "a") pc = Obj.has_field obj1 (key_c "a") pc );
@@ -128,25 +122,19 @@ let () =
   let obj1, pc = get_obj (Obj.delete obj1 (key_c "a") pc) in
   let obj5, pc = get_obj (Obj.delete obj5 (key_c "i") pc) in
 
-  let _ = Mem.delete_field m loc1 (key_c "a") pc in
-  let _ = Mem.delete_field m loc5 (key_c "i") pc in
+  let _ = Mem.delete m loc1 (key_c "a") pc in
+  let _ = Mem.delete m loc5 (key_c "i") pc in
 
-  assert (Mem.get m loc1 = Some obj1);
-  assert (Mem.get m loc2 = Some obj2);
-  assert (Mem.get m loc3 = Some obj3);
-  assert (Mem.get m loc4 = Some obj4);
-  assert (Mem.get m loc5 = Some obj5);
-
-  assert (Mem.get_field m loc1 (key_c "a") pc = Obj.get obj1 (key_c "a") pc);
-  assert (Mem.get_field m loc1 (key_c "b") pc = Obj.get obj1 (key_c "b") pc);
-  assert (Mem.get_field m loc2 (key_c "c") pc = Obj.get obj2 (key_c "c") pc);
-  assert (Mem.get_field m loc2 (key_c "d") pc = Obj.get obj2 (key_c "d") pc);
-  assert (Mem.get_field m loc3 (key_c "e") pc = Obj.get obj3 (key_c "e") pc);
-  assert (Mem.get_field m loc3 (key_c "f") pc = Obj.get obj3 (key_c "f") pc);
-  assert (Mem.get_field m loc4 (key_c "g") pc = Obj.get obj4 (key_c "g") pc);
-  assert (Mem.get_field m loc4 (key_c "h") pc = Obj.get obj4 (key_c "h") pc);
-  assert (Mem.get_field m loc5 (key_c "i") pc = Obj.get obj5 (key_c "i") pc);
-  assert (Mem.get_field m loc5 (key_c "j") pc = Obj.get obj5 (key_c "j") pc);
+  assert (Mem.get m loc1 (key_c "a") pc = Obj.get obj1 (key_c "a") pc);
+  assert (Mem.get m loc1 (key_c "b") pc = Obj.get obj1 (key_c "b") pc);
+  assert (Mem.get m loc2 (key_c "c") pc = Obj.get obj2 (key_c "c") pc);
+  assert (Mem.get m loc2 (key_c "d") pc = Obj.get obj2 (key_c "d") pc);
+  assert (Mem.get m loc3 (key_c "e") pc = Obj.get obj3 (key_c "e") pc);
+  assert (Mem.get m loc3 (key_c "f") pc = Obj.get obj3 (key_c "f") pc);
+  assert (Mem.get m loc4 (key_c "g") pc = Obj.get obj4 (key_c "g") pc);
+  assert (Mem.get m loc4 (key_c "h") pc = Obj.get obj4 (key_c "h") pc);
+  assert (Mem.get m loc5 (key_c "i") pc = Obj.get obj5 (key_c "i") pc);
+  assert (Mem.get m loc5 (key_c "j") pc = Obj.get obj5 (key_c "j") pc);
 
   assert (
     Mem.has_field m loc1 (key_c "a") pc = Obj.has_field obj1 (key_c "a") pc );
@@ -179,16 +167,4 @@ let () =
   assert (
     Mem.has_field m loc4 (key_c "700") pc = Obj.has_field obj4 (key_c "700") pc );
   assert (
-    Mem.has_field m loc5 (key_c "900") pc = Obj.has_field obj5 (key_c "900") pc );
-
-  (* Remove all object except obj1 *)
-  let _ = Mem.remove m loc2 in
-  let _ = Mem.remove m loc3 in
-  let _ = Mem.remove m loc4 in
-  let _ = Mem.remove m loc5 in
-
-  assert (Mem.get m loc1 = Some obj1);
-  assert (Mem.get m loc2 = None);
-  assert (Mem.get m loc3 = None);
-  assert (Mem.get m loc4 = None);
-  assert (Mem.get m loc5 = None)
+    Mem.has_field m loc5 (key_c "900") pc = Obj.has_field obj5 (key_c "900") pc )
