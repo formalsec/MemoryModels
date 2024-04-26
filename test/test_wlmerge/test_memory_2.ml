@@ -14,11 +14,11 @@ let () =
 
   (* Create memory with 5 objects *)
   let m = Mem.create () in
-  let loc1 = Mem.alloc m obj1 in
-  let loc2 = Mem.alloc m obj2 in
-  let loc3 = Mem.alloc m obj3 in
-  let loc4 = Mem.alloc m obj4 in
-  let loc5 = Mem.alloc m obj5 in
+  let loc1 = Mem.alloc m in
+  let loc2 = Mem.alloc m in
+  let loc3 = Mem.alloc m in
+  let loc4 = Mem.alloc m in
+  let loc5 = Mem.alloc m in
 
   (* Add fields to objects *)
   let _ = Mem.set m loc1 ~field:(key_c "a") ~data:(value_int 100) pc in

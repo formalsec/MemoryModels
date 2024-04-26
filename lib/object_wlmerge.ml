@@ -17,12 +17,6 @@ struct
 
   and t = record list
 
-  let time = ref 0
-
-  let get_new_time () =
-    time := !time + 1;
-    !time
-
   let create_empty_record ?(time = 0) () : record = Empty time
 
   let create_record ?(time = 0) () : record =
@@ -63,46 +57,33 @@ struct
       o
 
   let to_string (o : t) : string = Fmt.asprintf "%a" pp o
-  let to_json = to_string
-
-  let clone (o : t) : t =
-    let new_rec = create_empty_record ~time:(get_new_time ()) () in
+  
+  let clone (o : t) (time: int) : t =
+    let new_rec = create_empty_record ~time () in
     new_rec :: o
 
-  let merge (o1 : t) (o2 : t) (pc : pc_value) : t =
-    let split_while xs ~f =
-      let rec loop acc = function
-        | hd :: tl when f hd -> loop (hd :: acc) tl
-        | t -> (List.rev acc, t)
-      in
-      loop [] xs
-    in
-    let rec get_common_time (obj1 : t) (obj2 : t) : int =
-      let exists_time time' =
-        List.exists (fun x ->
-            match x with
-            | Rec { time; _ } | If { time; _ } | Empty time -> time = time' )
-      in
-      match obj1 with
-      | [] -> failwith "object_wlmerge.merge: unexpected case"
-      | [ (Rec { time; _ } | If { time; _ } | Empty time) ] ->
-        if exists_time time obj2 then time
-        else failwith "object_wlmerge.merge: unexpected case"
-      | (Rec { time; _ } | If { time; _ } | Empty time) :: tl ->
-        if exists_time time obj2 then time else get_common_time tl obj2
-    in
-    let diff_times time' = function
-      | Rec { time; _ } | If { time; _ } | Empty time -> time <> time'
-    in
+  let rec split (o_ac : t) (o : t) (time: int) : t * t = 
+    let get_time obj = match obj with 
+      | Rec {time; _} | If {time; _} | Empty time -> time in 
 
-    let time = get_common_time o1 o2 in
-    let rest_o1, shared_obj = split_while o1 ~f:(diff_times time) in
-    let rest_o2, _ = split_while o2 ~f:(diff_times time) in
-    let if_record =
-      create_if_record ~time:(get_new_time ()) pc rest_o1 rest_o2
-    in
-    let empty_record = create_empty_record ~time:(get_new_time ()) () in
-    empty_record :: if_record :: shared_obj
+    match o with
+    | [] -> List.rev o_ac, []
+    | o_rec :: o' ->
+      if (get_time o_rec) > time then split (o_rec :: o_ac) o' time 
+      else List.rev o_ac, o
+
+  let merge (o1 : t) (o2 : t) (time: int) (pc : pc_value) : t =
+    let o1', o' = split [] o1 time in
+    let o2', _ = split [] o2 time in
+    let empty_record = create_empty_record ~time () in
+    let if_record = create_if_record ~time pc o1' o2' in
+    empty_record :: if_record :: o'
+
+  let single_merge (o : t) (time: int) (pc : pc_value) : t = 
+    let o', o'' = split [] o time in
+    let empty_record = create_empty_record ~time () in
+    let if_record = create_if_record ~time pc o' [] in
+    empty_record :: if_record :: o''
 
   let set (o : t) ~(field : value) ~(data : value) (pc : pc_value) :
     (t * pc_value) list =

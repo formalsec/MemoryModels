@@ -10,7 +10,7 @@ let () =
   (*********** Create an empty memory and insert an empty object ***********)
   let m = Mem.create () in
   let obj = Obj.create () in
-  let loc = Mem.alloc m obj in
+  let loc = Mem.alloc m in
 
   (*********** Concrete write {"foo" : 100} ***********)
   let foo = key_c "foo" in

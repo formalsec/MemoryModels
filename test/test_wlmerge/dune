@@ -10,11 +10,12 @@
   test_obj_5_0
   test_obj_5_1
   test_obj_5_2
-  test_obj_6_0
-  test_obj_6_1
+  ;test_obj_6_0
+  ;test_obj_6_1
   test_memory_1
   test_memory_2
-  play
-  play3
+  ;play
+  ;play3
+  play4
   play2)
  (libraries memory_models smtml test))

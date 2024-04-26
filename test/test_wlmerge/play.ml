@@ -39,10 +39,8 @@ let () =
    o.a --> [#y > 3 && #z = a, 3]; [#x = a, 4]; [True, 3]  -> ITE(#y > 3 && #z = a, 3, ITE(#x = a, 4, 3))
   *)
   let mem = Mem.create () in
-  let o = Obj.create () in
-  let o2 = Obj.create () in
-  let loc = Mem.alloc mem o in
-  let loc2 = Mem.alloc mem o2 in
+  let loc = Mem.alloc mem in
+  let loc2 = Mem.alloc mem in
   let _ = Mem.set mem loc ~field:a ~data:val_3 pc in
   let _ = Mem.set mem loc2 ~field:x ~data:val_4 pc in
   let then_mem = Mem.clone mem in

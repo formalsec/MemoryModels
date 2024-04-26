@@ -74,9 +74,10 @@ struct
     }
     :: h
 
-  let alloc (h : t) (o : object_) : value =
+  let alloc (h : t) : value =
     let h = List.hd h in
     let next = !loc in
+    let o = O.create () in
     (* FIXME: Se houver a função delete object entao tem de ser o object_ option  *)
     Hashtbl.replace h.map next o;
     loc := !loc + 1;
@@ -106,7 +107,8 @@ struct
     match from_parent with
     | false -> obj
     | true ->
-      let obj = O.clone obj in
+      (* TODO: *)
+      let obj = O.clone obj 0 in
       set_object h loc obj;
       obj
 

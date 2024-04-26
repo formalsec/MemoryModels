@@ -41,11 +41,9 @@ let () =
   TODO: ???_1 o que guarda aqui, já depende da condição
   *)
   let mem = Mem.create () in
-  let o = Obj.create () in
-  let o2 = Obj.create () in
-  let loc = Mem.alloc mem o in
+  let loc = Mem.alloc mem in
   let _ = Mem.set mem loc ~field:p ~data:val_3 pc in
-  let _loc2 = Mem.alloc mem o2 in
+  let _loc2 = Mem.alloc mem in
   let then_mem = Mem.clone mem in
   let else_mem = Mem.clone mem in
   let _then_mem = Mem.set then_mem loc ~field:s1 ~data:val_x_1 pc in

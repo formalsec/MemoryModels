@@ -31,14 +31,14 @@ let () =
 
   let obj, pc = get_obj (Obj.set obj ~field:a ~data:val_3 pc) in
 
-  let then_obj = Obj.clone obj in
-  let else_obj = Obj.clone obj in
+  let then_obj = Obj.clone obj 1 in
+  let else_obj = Obj.clone obj 2 in
 
   let then_obj, pc = get_obj (Obj.set then_obj ~field:b ~data:val_1 pc) in
 
   let else_obj, _pc = get_obj (Obj.set else_obj ~field:z ~data:val_2 pc) in
 
-  let merged_obj = Obj.merge then_obj else_obj cond in
+  let merged_obj = Obj.merge then_obj else_obj 0 cond in
 
   (* test get *)
   assert (

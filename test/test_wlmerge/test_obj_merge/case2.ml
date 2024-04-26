@@ -3,7 +3,7 @@ open Memory_models
 module Obj = Object_wlmerge.M
 
 (* Test case:
-   test if - case 4 *)
+   test if - case 2 *)
 let () =
   let a = key_c "a" in
   let b = key_c "b" in
@@ -22,31 +22,31 @@ let () =
       if (#y > 0) {
         o.b = 1;
       } else {
-        o.a = 2; 
+        o.c = 2; 
       }
   *)
   let obj = Obj.create () in
 
   let obj, pc = get_obj (Obj.set obj ~field:a ~data:val_3 pc) in
 
-  let then_obj = Obj.clone obj in
-  let else_obj = Obj.clone obj in
+  let then_obj = Obj.clone obj 1 in
+  let else_obj = Obj.clone obj 2 in
 
   let then_obj, pc = get_obj (Obj.set then_obj ~field:b ~data:val_1 pc) in
 
-  let else_obj, _pc = get_obj (Obj.set else_obj ~field:a ~data:val_2 pc) in
+  let else_obj, _pc = get_obj (Obj.set else_obj ~field:c ~data:val_2 pc) in
 
-  let merged_obj = Obj.merge then_obj else_obj cond in
+  let merged_obj = Obj.merge then_obj else_obj 0 cond in
 
   (* test get *)
-  assert (Obj.get merged_obj a pc = [ (ite (not_ cond) val_2 val_3, pc) ]);
+  assert (Obj.get merged_obj a pc = [ (val_3, pc) ]);
   assert (Obj.get merged_obj b pc = [ (ite cond val_1 undef, pc) ]);
-  assert (Obj.get merged_obj c pc = [ (undef, pc) ]);
+  assert (Obj.get merged_obj c pc = [ (ite (not_ cond) val_2 undef, pc) ]);
   assert (
     Obj.get merged_obj x pc
     = [ ( ite
             (and_ (eq x b) cond)
             val_1
-            (ite (and_ (eq x a) (not_ cond)) val_2 (ite (eq x a) val_3 undef))
+            (ite (and_ (eq x c) (not_ cond)) val_2 (ite (eq x a) val_3 undef))
         , pc )
       ] )

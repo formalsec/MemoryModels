@@ -8,9 +8,9 @@ module type S = sig
   val clone : t -> t
   val merge : t -> t -> pc_value -> t
 
-  (** [alloc m o ] allocates memory for the object [o] in memory [m] and returns
+  (** [alloc m ] allocates memory for a new object [o] in memory [m] and returns
       its location. *)
-  val alloc : t -> object_ -> value
+  val alloc : t -> value
 
   (** [set m l ~field ~data pc] sets the field [field] of the object at location
       [l] in memory [m] to [data]. *)

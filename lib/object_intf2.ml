@@ -4,8 +4,13 @@ module type S = sig
   type pc_value
 
   val create : unit -> t
-  val clone : t -> t
-  val merge : t -> t -> pc_value -> t
+  val clone : t -> int -> t
+
+  (** [merge o1 o2 time cond] merges the objects [o1] and [o2] until the specified [time] with a condition [cond]. *)
+  val merge : t -> t -> int -> pc_value -> t
+
+  (** [single_merge o time cond] merges the object [o] until the specified [time] with a condition [cond]. *)
+  val single_merge : t -> int -> pc_value -> t
 
   (** [set o ~field ~data pc] sets the field [field] of the object [o] to [data]
       and returns a list of a pair of resulted object and respective path
@@ -31,5 +36,4 @@ module type S = sig
 
   val pp : Fmt.t -> t -> unit
   val to_string : t -> string
-  val to_json : t -> string
 end
