@@ -8,12 +8,13 @@ let () =
   let y = key_s_int "y" in
   let z = key_s "z" in
   let a = key_c "a" in
+  let b = key_c "b" in
   let c = key_c "c" in
-  let _d = key_c "d" in
+  let d = key_c "d" in
   let val_3 = value_int 3 in
   let val_4 = value_int 4 in
   let val_5 = value_int 5 in
-  let _val_6 = value_int 6 in
+  let val_6 = value_int 6 in
   let pc = value_bool true in
   let cond = gt y (value_int 3) in
   (*
@@ -21,6 +22,7 @@ let () =
   o = {}          -> Heap.alloc  
   o.a = 3;        -> Heap.set
   o[#x] = 4       -> Heap.set 
+  o2 = {}         -> Heap.alloc  
   ------------obj1---------> o = R2{{};_; 0}; R1:{{a:3}; #x:4; 0}
                   [ { hp: [1 -> o]; { 1 }; 0} ]
                   -> Heap.clone -> [ { hp: []; {}; 1}; { hp: [1 -> o]; { 1 }; 0} ] 
@@ -44,10 +46,24 @@ let () =
   let loc = Mem.alloc mem in
   let _ = Mem.set mem loc ~field:a ~data:val_3 pc in
   let _ = Mem.set mem loc ~field:x ~data:val_4 pc in
-  
-  let then_mem = Mem.clone mem in
-  let else_mem = Mem.clone mem in
-  
-  let _then_mem = Mem.set then_mem loc ~field:s1 ~data:val_x_1 pc in
-  let _else_mem = Mem.set else_mem loc ~field:p ~data:val_4 pc in
-  ()
+  let _loc2 = Mem.alloc mem in
+
+  let then_mem, then_time = Mem.clone mem in
+  let else_mem, else_time = Mem.clone mem in
+
+  let _ = Mem.set then_mem loc ~field:b ~data:val_4 pc in
+
+  let _ = Mem.set then_mem loc ~field:z ~data:val_3 pc in
+  Format.printf "----Memory then_mem: ----\n%a\n\n\n" Mem.pp then_mem;
+
+  let _ = Mem.set else_mem loc ~field:c ~data:val_5 pc in
+  Format.printf "----Memory else_mem: ----\n%a\n\n\n" Mem.pp else_mem;
+
+  let common_time = min then_time else_time - 1 in
+  let mem = Mem.merge then_mem else_mem common_time cond in
+
+  let _ = Mem.set mem loc ~field:d ~data:val_6 pc in
+
+  Format.printf "Memory: %a@." Mem.pp mem;
+
+  print_get a (Mem.get mem loc a pc)

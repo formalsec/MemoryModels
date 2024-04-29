@@ -26,7 +26,7 @@ struct
     record =
     If { cond; then_; else_; time }
 
-  let create () : t = [ create_empty_record () ]
+  let create ?(time = 0) () : t = [ create_empty_record ~time () ]
 
   let pp (fmt : Fmt.t) (o : t) : unit =
     let open Fmt in
@@ -42,44 +42,45 @@ struct
     let rec pp_record fmt (orec : record) =
       match orec with
       | Rec { concrete; symbolic; time } ->
-        fprintf fmt "{%a{%a}, %a}" pp_int time pp_concrete concrete pp_symbolic
-          symbolic
+        fprintf fmt "{ R%a{%a}, %a}" pp_int time pp_concrete concrete
+          pp_symbolic symbolic
       | If { cond; then_; else_; time } ->
-        fprintf fmt "[ %a{%a then %a else %a} ]" pp_int time Expr.pp cond
+        fprintf fmt "[ R%a{%a then %a else %a} ]" pp_int time Expr.pp cond
           (pp_lst ~pp_sep:pp_semicolon pp_record)
           then_
           (pp_lst ~pp_sep:pp_semicolon pp_record)
           else_
-      | Empty time -> fprintf fmt "{Empty:%a}" pp_int time
+      | Empty time -> fprintf fmt "{ R%a:Empty }" pp_int time
     in
     fprintf fmt "[ %a ]"
       (pp_lst ~pp_sep:(fun fmt () -> fprintf fmt "; ") pp_record)
       o
 
   let to_string (o : t) : string = Fmt.asprintf "%a" pp o
-  
-  let clone (o : t) (time: int) : t =
+
+  let clone (o : t) (time : int) : t =
     let new_rec = create_empty_record ~time () in
     new_rec :: o
 
-  let rec split (o_ac : t) (o : t) (time: int) : t * t = 
-    let get_time obj = match obj with 
-      | Rec {time; _} | If {time; _} | Empty time -> time in 
+  let rec split (o_ac : t) (o : t) (time : int) : t * t =
+    let get_time obj =
+      match obj with Rec { time; _ } | If { time; _ } | Empty time -> time
+    in
 
     match o with
-    | [] -> List.rev o_ac, []
+    | [] -> (List.rev o_ac, [])
     | o_rec :: o' ->
-      if (get_time o_rec) > time then split (o_rec :: o_ac) o' time 
-      else List.rev o_ac, o
+      if get_time o_rec > time then split (o_rec :: o_ac) o' time
+      else (List.rev o_ac, o)
 
-  let merge (o1 : t) (o2 : t) (time: int) (pc : pc_value) : t =
+  let merge (o1 : t) (o2 : t) (time : int) (pc : pc_value) : t =
     let o1', o' = split [] o1 time in
     let o2', _ = split [] o2 time in
     let empty_record = create_empty_record ~time () in
     let if_record = create_if_record ~time pc o1' o2' in
     empty_record :: if_record :: o'
 
-  let single_merge (o : t) (time: int) (pc : pc_value) : t = 
+  let single_merge (o : t) (time : int) (pc : pc_value) : t =
     let o', o'' = split [] o time in
     let empty_record = create_empty_record ~time () in
     let if_record = create_if_record ~time pc o' [] in
@@ -200,10 +201,6 @@ struct
   let get (o : t) (field : value) (pc : pc_value) : (value * pc_value) list =
     let _, _, l = get_object field pc o in
     let ite_expr = mk_ite_get l in
-    (* Format.printf "\n----------\nget %a: %a\n\n ite: %a----------\n \n"
-       Expr.pp field
-       (Fmt.pp_lst ~pp_sep:Fmt.pp_semicolon (fun fmt (pc, v) -> Fmt.fprintf fmt "(%a, %a)" Expr.pp pc  Expr.pp (Option.value v ~default:(undef)))) l
-       Expr.pp ite_expr; *)
     [ (ite_expr, pc) ]
 
   let delete (o : t) (field : value) (pc : pc_value) : (t * pc_value) list =

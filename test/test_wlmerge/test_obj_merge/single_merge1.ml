@@ -27,4 +27,5 @@ let () =
 
   let merged_obj = Obj.single_merge then_obj 0 cond in
 
-  print_obj Obj.pp merged_obj
+  (* print_obj Obj.pp merged_obj; *)
+  assert (Obj.get merged_obj p pc = [ (ite cond x undef, pc) ])

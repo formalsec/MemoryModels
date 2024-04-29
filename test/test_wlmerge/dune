@@ -15,7 +15,7 @@
   test_memory_1
   test_memory_2
   ;play
-  ;play3
+  play3
   play4
   play2)
  (libraries memory_models smtml test))

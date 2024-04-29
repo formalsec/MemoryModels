@@ -44,8 +44,8 @@ let () =
   let loc = Mem.alloc mem in
   let _ = Mem.set mem loc ~field:p ~data:val_3 pc in
   let _loc2 = Mem.alloc mem in
-  let then_mem = Mem.clone mem in
-  let else_mem = Mem.clone mem in
+  let then_mem, _then_time = Mem.clone mem in
+  let else_mem, _else_time = Mem.clone mem in
   let _then_mem = Mem.set then_mem loc ~field:s1 ~data:val_x_1 pc in
   let _else_mem = Mem.set else_mem loc ~field:p ~data:val_4 pc in
   ()

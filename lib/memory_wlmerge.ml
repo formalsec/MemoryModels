@@ -19,11 +19,12 @@ struct
   type t = heap_rec list
 
   let loc = ref 0
-  let time = ref 0
+  let counter = ref 0
+  let set_time (time : int) = counter := time
 
   let get_new_time () =
-    time := !time + 1;
-    !time
+    counter := !counter + 1;
+    !counter
 
   let create () : t =
     [ { map = Hashtbl.create 512; time = 0; changes = ref IntSet.empty } ]
@@ -33,11 +34,11 @@ struct
   let pp (fmt : Fmt.t) (h : t) =
     let open Fmt in
     let pp_set fmt set = pp_iter ~pp_sep:pp_comma IntSet.iter pp_int fmt set in
-    let pp_v fmt (loc, o) = fprintf fmt "%a=>%a" pp_int loc O.pp o in
+    let pp_v fmt (loc, o) = fprintf fmt "%a -> %a" pp_int loc O.pp o in
     let pp_rec fmt { map; time; changes } =
-      fprintf fmt "{%a={@\n %a }; {%a}}" pp_int time
+      fprintf fmt "{%a=(%a){@\n %a }}" pp_int time pp_set !changes
         (pp_hashtbl ~pp_sep:(fun fmt () -> fprintf fmt "@\n ") pp_v)
-        map pp_set !changes
+        map
     in
     fprintf fmt "%a"
       (pp_lst ~pp_sep:(fun fmt () -> fprintf fmt "@\n->@ ") pp_rec)
@@ -48,31 +49,42 @@ struct
     | Val (Int l) -> l
     | _ -> failwith "memory_wlmerge.get_loc: Not a location"
 
-  let merge (_h1 : t) (_h2 : t) (_cond : pc_value) : t = assert false
-  (* match (h1, h2) with
-     | hr1 :: (h :: tl as h1'), hr2 :: h2' when h1' = h2' ->
-       let changes = IntSet.union !(hr1.changes) !(hr2.changes) in
-       IntSet.iter
-         (fun l ->
-           let o1 = Hashtbl.find hr1.map l in
-           let o2 = Hashtbl.find hr2.map l in
-           match (o1, o2) with
-           | None, None -> failwith "TODO: merge"
-           | Some _, None | None, Some _ -> failwith "TODO: merge"
-           | Some o1', Some o2' ->
-             let new_o = O.merge o1' o2' cond in
-             Hashtbl.replace h.map l (Some new_o) )
-         changes;
-       { h with time = get_new_time () } :: tl
-     | _ -> failwith "memory_wlmerge.merge: Unexepected cases"
-  *)
+  let merge (h1 : t) (h2 : t) (time : int) (cond : pc_value) : t =
+    let single_merge h h' cond_ =
+      IntSet.iter (fun l ->
+          let o' = Hashtbl.find h'.map l in
+          let new_o = O.single_merge o' time cond_ in
+          Hashtbl.replace h.map l new_o )
+    in
 
-  let clone (h : t) : t =
-    { map = Hashtbl.create 64
-    ; time = get_new_time ()
-    ; changes = ref IntSet.empty
-    }
-    :: h
+    match (h1, h2) with
+    | hr1 :: (h :: _ as h1'), hr2 :: h2' when h1' = h2' ->
+      (* merge *)
+      let changes = IntSet.inter !(hr1.changes) !(hr2.changes) in
+      IntSet.iter
+        (fun l ->
+          let o1 = Hashtbl.find hr1.map l in
+          let o2 = Hashtbl.find hr2.map l in
+          let new_o = O.merge o1 o2 time cond in
+          Hashtbl.replace h.map l new_o )
+        changes;
+
+      (* single merge then *)
+      let changes = IntSet.diff !(hr1.changes) !(hr2.changes) in
+      single_merge h hr1 cond changes;
+
+      (* single merge else *)
+      let changes = IntSet.diff !(hr2.changes) !(hr1.changes) in
+      single_merge h hr2 (not_ cond) changes;
+      set_time time;
+      h1'
+    | _ -> failwith "memory_wlmerge.merge: Unexepected cases"
+
+  let clone (h : t) : t * int =
+    let new_time = get_new_time () in
+    ( { map = Hashtbl.create 64; time = new_time; changes = ref IntSet.empty }
+      :: h
+    , new_time )
 
   let alloc (h : t) : value =
     let h = List.hd h in
@@ -103,12 +115,12 @@ struct
     aux h loc false
 
   let get_object (h : t) (loc : value) : object_ option =
+    let time = match h with [] -> 0 | { time; _ } :: _ -> time in
     let+ obj, from_parent = find_object h loc in
     match from_parent with
     | false -> obj
     | true ->
-      (* TODO: *)
-      let obj = O.clone obj 0 in
+      let obj = O.clone obj time in
       set_object h loc obj;
       obj
 
