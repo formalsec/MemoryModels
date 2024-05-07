@@ -29,4 +29,6 @@ module type S = sig
   val has_field : t -> value -> value -> pc_value -> value
 
   val pp : Fmt.t -> t -> unit
+
+  val pp_val : t -> Fmt.t -> value -> unit
 end

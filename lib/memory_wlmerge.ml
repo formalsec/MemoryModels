@@ -29,7 +29,7 @@ struct
   let create () : t =
     [ { map = Hashtbl.create 512; time = 0; changes = ref IntSet.empty } ]
 
-  let pp_loc (fmt : Fmt.t) (loc : value) : unit = Expr.pp fmt loc
+  let pp_loc (fmt : Fmt.t) (loc : int) : unit = Fmt.pp_int fmt loc
 
   let pp (fmt : Fmt.t) (h : t) =
     let open Fmt in
@@ -154,6 +154,16 @@ struct
           failwith "memory_wlmerge.delete_field: non/multiple objects returned"
         )
       obj
+
+  let pp_val (h : t) (fmt : Fmt.t) (loc : value) : unit =
+    let open Fmt in 
+    match Expr.view loc with
+    | Val (Int l) -> (
+      match get_object h loc with
+      | None -> fprintf fmt "%a" pp_loc l
+      | Some o -> Fmt.fprintf fmt "%a -> %a" pp_loc l O.pp o)
+    | _ -> Fmt.fprintf fmt "%a" Expr.pp loc
+
 end
 
 module M :

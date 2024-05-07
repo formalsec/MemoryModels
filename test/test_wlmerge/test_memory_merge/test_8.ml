@@ -62,6 +62,7 @@ let () =
   let else_mem2, else_time2 = Mem.clone then_mem1 in
   let _ = Mem.set then_mem2 loc1 ~field:b ~data:val_2 pc in
   let _ = Mem.set else_mem2 loc1 ~field:b ~data:val_3 pc in
+  
   let common_time = min then_time2 else_time2 - 1 in
   let then_mem1 = Mem.merge then_mem2 else_mem2 common_time cond2 in
 
