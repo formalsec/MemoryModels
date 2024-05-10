@@ -43,8 +43,8 @@ let () =
   let loc2 = Mem.alloc mem in
   let _ = Mem.set mem loc ~field:a ~data:val_3 pc in
   let _ = Mem.set mem loc2 ~field:x ~data:val_4 pc in
-  let then_mem = Mem.clone mem in
-  let else_mem = Mem.clone mem in
+  let then_mem = Mem.clone mem 1 in
+  let else_mem = Mem.clone mem 2 in
   let _ = Mem.set then_mem loc ~field:z ~data:val_3 pc in
   Format.printf "----Memory then_mem: ----\n%a\n\n\n" Mem.pp then_mem;
   let _ = Mem.set else_mem loc ~field:c ~data:val_5 pc in

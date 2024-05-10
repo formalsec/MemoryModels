@@ -5,7 +5,7 @@ module type S = sig
   type object_
 
   val create : unit -> t
-  val clone : t -> t * int
+  val clone : t -> int -> t
   val merge : t -> t -> int -> pc_value -> t
 
   (** [alloc m ] allocates memory for a new object [o] in memory [m] and returns

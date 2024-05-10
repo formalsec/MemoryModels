@@ -49,8 +49,8 @@ let () =
   let _ = Mem.set mem loc1 ~field:x ~data:val_4 pc in
   let loc2 = Mem.alloc mem in
 
-  let then_mem, then_time = Mem.clone mem in
-  let else_mem, else_time = Mem.clone mem in
+  let then_mem = Mem.clone mem 1 in
+  let else_mem = Mem.clone mem 2 in
 
   let _ = Mem.set then_mem loc2 ~field:b ~data:val_6 pc in
   let _ = Mem.set then_mem loc1 ~field:b ~data:val_7 pc in
@@ -60,8 +60,7 @@ let () =
   in
   let _ = Mem.set else_mem loc2 ~field:z ~data:val_7 pc in
 
-  let common_time = min then_time else_time - 1 in
-  let mem = Mem.merge then_mem else_mem common_time cond in
+  let mem = Mem.merge then_mem else_mem 0 cond in
 
   let _ = Mem.set mem loc1 ~field:d ~data:val_6 pc in
 

@@ -19,12 +19,6 @@ struct
   type t = heap_rec list
 
   let loc = ref 0
-  let counter = ref 0
-  let set_time (time : int) = counter := time
-
-  let get_new_time () =
-    counter := !counter + 1;
-    !counter
 
   let create () : t =
     [ { map = Hashtbl.create 512; time = 0; changes = ref IntSet.empty } ]
@@ -76,15 +70,12 @@ struct
       (* single merge else *)
       let changes = IntSet.diff !(hr2.changes) !(hr1.changes) in
       single_merge h hr2 (not_ cond) changes;
-      set_time time;
       h1'
     | _ -> failwith "memory_wlmerge.merge: Unexepected cases"
 
-  let clone (h : t) : t * int =
-    let new_time = get_new_time () in
-    ( { map = Hashtbl.create 64; time = new_time; changes = ref IntSet.empty }
+  let clone (h : t) (time: int) : t =
+    { map = Hashtbl.create 64; time; changes = ref IntSet.empty }
       :: h
-    , new_time )
 
   let alloc (h : t) : value =
     let h = List.hd h in

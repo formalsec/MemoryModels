@@ -54,21 +54,19 @@ let () =
   let _ = Mem.set mem loc1 ~field:x ~data:val_4 pc in
   let _loc2 = Mem.alloc mem in
 
-  let then_mem1, then_time1 = Mem.clone mem in
-  let else_mem1, else_time1 = Mem.clone mem in
+  let then_mem1 = Mem.clone mem 1 in
+  let else_mem1 = Mem.clone mem 2 in
 
   let _ = Mem.set then_mem1 loc1 ~field:b ~data:val_1 pc in
-  let then_mem2, then_time2 = Mem.clone then_mem1 in
-  let else_mem2, else_time2 = Mem.clone then_mem1 in
+  let then_mem2 = Mem.clone then_mem1 3 in
+  let else_mem2 = Mem.clone then_mem1 4 in
   let _ = Mem.set then_mem2 loc1 ~field:b ~data:val_2 pc in
   let _ = Mem.set else_mem2 loc1 ~field:b ~data:val_3 pc in
   
-  let common_time = min then_time2 else_time2 - 1 in
-  let then_mem1 = Mem.merge then_mem2 else_mem2 common_time cond2 in
+  let then_mem1 = Mem.merge then_mem2 else_mem2 1 cond2 in
 
   let _ = Mem.set else_mem1 loc1 ~field:b ~data:val_4 pc in
 
-  let common_time = min then_time1 else_time1 - 1 in
-  let mem = Mem.merge then_mem1 else_mem1 common_time cond1 in
+  let mem = Mem.merge then_mem1 else_mem1 0 cond1 in
 
   Format.printf "Memory: %a@." Mem.pp mem
