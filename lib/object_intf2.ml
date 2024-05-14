@@ -34,7 +34,7 @@ module type S = sig
 
   (** [has_field o field pc] checks it the object [o] contains the field
       [field]. *)
-  val has_field : t -> value -> value -> value
+  val has_field : t -> value -> pc_value -> value
 
   val pp : Fmt.t -> t -> unit
   val to_string : t -> string

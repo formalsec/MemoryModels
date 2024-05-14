@@ -145,7 +145,15 @@ struct
           failwith "memory_wlmerge.delete_field: non/multiple objects returned"
         )
       obj
+  
+  let get_fields (h : t) (loc : value) : value list =
+    let obj = get_object h loc in
+    Option.fold obj ~none:[] ~some:O.get_fields
 
+  let to_list (h : t) (loc : value) : (value * value) list =
+    let obj = get_object h loc in
+    Option.fold obj ~none:[] ~some:O.to_list
+  
   let pp_val (h : t) (fmt : Fmt.t) (loc : value) : unit =
     let open Fmt in 
     match Expr.view loc with
