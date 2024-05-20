@@ -21,11 +21,11 @@ let () =
   let obj = Obj.create () in
 
   let then_obj = Obj.clone obj 1 in
-  let _else_obj = Obj.clone obj 2 in
+  let _else_obj = Obj.clone obj 1 in
 
   let then_obj, _pc = get_obj (Obj.set then_obj ~field:p ~data:x pc) in
 
-  let merged_obj = Obj.single_merge then_obj 0 cond in
+  let merged_obj = Obj.single_merge then_obj 1 cond in
 
   (* print_obj Obj.pp merged_obj; *)
   assert (Obj.get merged_obj p pc = [ (ite cond x undef, pc) ])

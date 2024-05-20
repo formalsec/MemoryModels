@@ -70,7 +70,7 @@ struct
     match o with
     | [] -> (List.rev o_ac, [])
     | o_rec :: o' ->
-      if get_time o_rec > time then split (o_rec :: o_ac) o' time
+      if get_time o_rec >= time then split (o_rec :: o_ac) o' time
       else (List.rev o_ac, o)
 
   let merge (o1 : t) (o2 : t) (time : int) (pc : pc_value) : t =

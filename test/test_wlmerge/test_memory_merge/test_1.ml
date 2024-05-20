@@ -53,19 +53,16 @@ let () =
   let _loc2 = Mem.alloc mem in
 
   let then_mem = Mem.clone mem 1 in
-  let else_mem = Mem.clone mem 2 in
+  let else_mem = Mem.clone mem 1 in
 
   let _ = Mem.set then_mem loc ~field:b ~data:val_4 pc in
   let _ = Mem.set then_mem loc ~field:z ~data:val_3 pc in
 
   let _ = Mem.set else_mem loc ~field:c ~data:val_5 pc in
 
-  let mem = Mem.merge then_mem else_mem 0 cond in
+  let mem = Mem.merge then_mem else_mem 1 cond in
 
   let _ = Mem.set mem loc ~field:d ~data:val_6 pc in
-
-  (* Format.printf "Memory: %a@." Mem.pp mem; *)
-  print_get a (Mem.get mem loc a pc);
 
   assert (
     Mem.get mem loc a pc

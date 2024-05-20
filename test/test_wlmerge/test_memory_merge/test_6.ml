@@ -51,7 +51,7 @@ let () =
   let loc2 = Mem.alloc mem in
 
   let then_mem = Mem.clone mem 1 in
-  let else_mem = Mem.clone mem 2 in
+  let else_mem = Mem.clone mem 1 in
 
   let _ = Mem.set then_mem loc2 ~field:b ~data:val_6 pc in
   let _ =
@@ -61,7 +61,7 @@ let () =
   let _ = Mem.set else_mem loc1 ~field:z ~data:val_5 pc in
   let _ = Mem.set else_mem loc2 ~field:z ~data:val_7 pc in
 
-  let mem = Mem.merge then_mem else_mem 0 cond in
+  let mem = Mem.merge then_mem else_mem 1 cond in
 
   let _ = Mem.set mem loc1 ~field:d ~data:val_6 pc in
 

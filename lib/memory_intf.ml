@@ -5,7 +5,12 @@ module type S = sig
   type object_
 
   val create : unit -> t
+  
+  (** [clone m time] clones the memory [m] and tags with [time] *)
   val clone : t -> int -> t
+  
+  (** [merge m1 m2 time cond] merges memories [m1] and [m2] with condition [cond].
+      It assumes that [m1] and [m2] are just different on time [time] *)
   val merge : t -> t -> int -> pc_value -> t
 
   (** [alloc m] allocates memory for a new object [o] in memory [m] and returns

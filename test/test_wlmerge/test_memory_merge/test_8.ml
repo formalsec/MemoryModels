@@ -55,18 +55,19 @@ let () =
   let _loc2 = Mem.alloc mem in
 
   let then_mem1 = Mem.clone mem 1 in
-  let else_mem1 = Mem.clone mem 2 in
+  let else_mem1 = Mem.clone mem 1 in
 
   let _ = Mem.set then_mem1 loc1 ~field:b ~data:val_1 pc in
-  let then_mem2 = Mem.clone then_mem1 3 in
-  let else_mem2 = Mem.clone then_mem1 4 in
+  let then_mem2 = Mem.clone then_mem1 2 in
+  let else_mem2 = Mem.clone then_mem1 2 in
   let _ = Mem.set then_mem2 loc1 ~field:b ~data:val_2 pc in
   let _ = Mem.set else_mem2 loc1 ~field:b ~data:val_3 pc in
   
-  let then_mem1 = Mem.merge then_mem2 else_mem2 1 cond2 in
+  let then_mem1 = Mem.merge then_mem2 else_mem2 2 cond2 in
 
   let _ = Mem.set else_mem1 loc1 ~field:b ~data:val_4 pc in
 
-  let mem = Mem.merge then_mem1 else_mem1 0 cond1 in
+  let mem = Mem.merge then_mem1 else_mem1 1 cond1 in
 
-  Format.printf "Memory: %a@." Mem.pp mem
+  (* TODO:x  *)
+  (* Format.printf "Memory: %a@." Mem.pp mem *)ignore mem;()

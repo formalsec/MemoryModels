@@ -48,7 +48,7 @@ let () =
   let _loc2 = Mem.alloc mem in
 
   let then_mem = Mem.clone mem 1 in
-  let else_mem = Mem.clone mem 2 in
+  let else_mem = Mem.clone mem 1 in
 
   let _ =
     assert (Mem.get then_mem loc b pc = [ (ite (eq b x) val_4 undef, pc) ])
@@ -56,7 +56,7 @@ let () =
 
   let _ = Mem.set else_mem loc ~field:z ~data:val_5 pc in
 
-  let mem = Mem.merge then_mem else_mem 0 cond in
+  let mem = Mem.merge then_mem else_mem 1 cond in
 
   let _ = Mem.set mem loc ~field:d ~data:val_6 pc in
 
