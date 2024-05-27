@@ -10,7 +10,7 @@ module Encoding = struct
   type t = Expr.t
 
   let solver = Solver.Z3_batch.create ()
-  let undef = Expr.(make @@ Val (App (`Op "symbol", [Str "undefined"])))
+  let undef = Expr.(make @@ Val (App (`Op "symbol", [ Str "undefined" ])))
   let str s = Expr.(make @@ Val (Str s))
   let true_ = Expr.(Bool.v true)
   let false_ = Expr.(Bool.v false)

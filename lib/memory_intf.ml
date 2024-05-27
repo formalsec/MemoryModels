@@ -5,12 +5,12 @@ module type S = sig
   type object_
 
   val create : unit -> t
-  
+
   (** [clone m time] clones the memory [m] and tags with [time] *)
   val clone : t -> int -> t
-  
-  (** [merge m1 m2 time cond] merges memories [m1] and [m2] with condition [cond].
-      It assumes that [m1] and [m2] are just different on time [time] *)
+
+  (** [merge m1 m2 time cond] merges memories [m1] and [m2] with condition
+      [cond]. It assumes that [m1] and [m2] are just different on time [time] *)
   val merge : t -> t -> int -> pc_value -> t
 
   (** [alloc m] allocates memory for a new object [o] in memory [m] and returns
@@ -33,13 +33,14 @@ module type S = sig
       has a field [field]. *)
   val has_field : t -> value -> value -> pc_value -> value
 
-  (** [get_fields m l] returns all fields of the object at location [l] in memory [m] *)
-  val get_fields : t -> value  -> value list
+  (** [get_fields m l] returns all fields of the object at location [l] in
+      memory [m] *)
+  val get_fields : t -> value -> value list
 
-  (** [to_list m l] returns a list of pairs of fields and the respective value of the object at location [l]. *)
+  (** [to_list m l] returns a list of pairs of fields and the respective value
+      of the object at location [l]. *)
   val to_list : t -> value -> (value * value) list
 
   val pp : Fmt.t -> t -> unit
-
   val pp_val : t -> Fmt.t -> value -> unit
 end

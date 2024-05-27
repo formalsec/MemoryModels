@@ -3,7 +3,7 @@ open Memory_models
 
 let eq v1 v2 = Expr.(relop Ty.Ty_bool Ty.Eq v1 v2)
 let ne v1 v2 = Expr.(unop Ty.Ty_bool Ty.Not (eq v1 v2))
-let undef = Expr.(make @@ Val (App (`Op "symbol", [Str "undefined"])))
+let undef = Expr.(make @@ Val (App (`Op "symbol", [ Str "undefined" ])))
 let key_c str = Expr.(make @@ Val (Str str))
 let key_s str = Expr.(make @@ Symbol Symbol.(str @: Ty.Ty_str))
 let key_s_int n = Expr.(make @@ Symbol Symbol.(n @: Ty.Ty_int))

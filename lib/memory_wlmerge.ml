@@ -38,6 +38,22 @@ struct
       (pp_lst ~pp_sep:(fun fmt () -> fprintf fmt "@\n->@ ") pp_rec)
       h
 
+  let rec get_locs_aux (pc : pc_value) (s_pc : pc_value) (v : value) :
+    (value * pc_value) list =
+    let ( &&& ) e1 e2 = Expr.Bool.and_ e1 e2 in
+    let not e1 = Expr.Bool.not e1 in
+
+    match Expr.view v with
+    | Val (Int _) -> [ (v, s_pc) ]
+    | Triop (_, Ty.Ite, c, e1, e2) ->
+      if pc => c then get_locs_aux pc s_pc e1
+      else if pc => not c then get_locs_aux pc s_pc e2
+      else
+        let rets1 = get_locs_aux pc (s_pc &&& c) e1 in
+        let rets2 = get_locs_aux pc (s_pc &&& not c) e2 in
+        rets1 @ rets2
+    | _ -> failwith "Error: Invalid Location"
+
   let get_loc (loc : value) : int =
     match Expr.view loc with
     | Val (Int l) -> l
@@ -70,12 +86,14 @@ struct
       (* single merge else *)
       let changes = IntSet.diff !(hr2.changes) !(hr1.changes) in
       single_merge h hr2 (not_ cond) changes;
+
+      let new_changes = IntSet.union !(hr1.changes) !(hr2.changes) in
+      h.changes := IntSet.union new_changes !(h.changes);
       h1'
     | _ -> failwith "memory_wlmerge.merge: Unexepected cases"
 
-  let clone (h : t) (time: int) : t =
-    { map = Hashtbl.create 64; time; changes = ref IntSet.empty }
-      :: h
+  let clone (h : t) (time : int) : t =
+    { map = Hashtbl.create 64; time; changes = ref IntSet.empty } :: h
 
   let alloc (h : t) : value =
     let h = List.hd h in
@@ -120,32 +138,87 @@ struct
       ~some:(fun o -> O.has_field o field pc)
       ~none:false_
 
-  let set (h : t) (l : value) ~(field : value) ~(data : value) (pc : pc_value) :
-    unit =
+  let set_aux (h : t) (l : value) ~(field : value) ~(data : value)
+    ?(cond : pc_value option = None) (pc : pc_value) : unit =
     Option.iter
       (fun o ->
-        match O.set o ~field ~data pc with
+        let set_list =
+          match cond with
+          | None -> O.set o ~field ~data pc
+          | Some cond -> O.set_conditional o ~field ~data pc cond
+        in
+        match set_list with
         | [ (o', _) ] -> set_object h l o'
         | _ ->
           failwith "memory_wlmerge.set_field: non/multiple objects returned" )
       (get_object h l)
 
-  let get (h : t) (loc : value) (field : value) (pc : pc_value) :
+  let set (h : t) (l : value) ~(field : value) ~(data : value) (pc : pc_value) :
+    unit =
+    let locs = get_locs_aux pc true_ l in
+    match locs with
+    | [ (loc, _) ] -> set_aux h loc ~field ~data pc
+    | _ ->
+      List.iter
+        (fun (loc, cond) ->
+          set_aux h loc ~field ~data ~cond:(Some cond) (and_ pc cond) )
+        locs
+
+  let mk_ite_get (conds : (value * pc_value) list) : value =
+    List.fold_right (fun (v, cond) acc -> ite cond v acc) conds undef
+
+  let get_aux (h : t) (loc : value) (field : value) (pc : pc_value) :
     (value * pc_value) list =
     let o = get_object h loc in
     Option.fold o ~none:[] ~some:(fun o -> O.get o field pc)
 
-  let delete (h : t) (loc : value) (f : value) (pc : pc_value) : unit =
+  let get (h : t) (loc : value) (field : value) (pc : pc_value) :
+    (value * pc_value) list =
+    let locs = get_locs_aux pc true_ loc in
+    (* lista de (locs, pc), sem ter a pc geral em conta *)
+    let values =
+      List.concat_map
+        (fun (loc, cond) ->
+          let rets = get_aux h loc field (and_ pc cond) in
+          List.map (fun (v, _) -> (v, cond)) rets )
+        locs
+    in
+    [ (mk_ite_get values, pc) ]
+
+  (* ite(y>10, loc(1), loc(2)); pc = true
+     get_aux loc(1) field (pc=true and y>10) -> [(value1, pc)]
+     get_aux loc(2) field (pc=y<=10) -> [(value2, pc)]
+
+     [(value1, y>10), (value2, y<=10)]
+     ite(y>10, value1, ite(y<=10, value2, undef))
+  *)
+
+  let delete_aux (h : t) (loc : value) (f : value)
+    ?(cond : pc_value option = None) (pc : pc_value) : unit =
     let obj = get_object h loc in
     Option.iter
       (fun o ->
-        match O.delete o f pc with
+        let delete_list =
+          match cond with
+          | None -> O.delete o f pc
+          | Some cond -> O.delete_conditional o f pc cond
+        in
+        match delete_list with
         | [ (o', _) ] -> set_object h loc o'
         | _ ->
           failwith "memory_wlmerge.delete_field: non/multiple objects returned"
         )
       obj
-  
+
+  let delete (h : t) (loc : value) (f : value) (pc : pc_value) : unit =
+    let locs = get_locs_aux pc true_ loc in
+    match locs with
+    | [ (loc, _) ] -> delete_aux h loc f pc
+    | _ ->
+      List.iter
+        (fun (loc, cond) -> delete_aux h loc f ~cond:(Some cond) (and_ pc cond))
+        locs
+
   let get_fields (h : t) (loc : value) : value list =
     let obj = get_object h loc in
     Option.fold obj ~none:[] ~some:O.get_fields
@@ -153,16 +226,15 @@ struct
   let to_list (h : t) (loc : value) : (value * value) list =
     let obj = get_object h loc in
     Option.fold obj ~none:[] ~some:O.to_list
-  
+
   let pp_val (h : t) (fmt : Fmt.t) (loc : value) : unit =
-    let open Fmt in 
+    let open Fmt in
     match Expr.view loc with
     | Val (Int l) -> (
       match get_object h loc with
       | None -> fprintf fmt "%a" pp_loc l
-      | Some o -> Fmt.fprintf fmt "%a -> %a" pp_loc l O.pp o)
+      | Some o -> Fmt.fprintf fmt "%a -> %a" pp_loc l O.pp o )
     | _ -> Fmt.fprintf fmt "%a" Expr.pp loc
-
 end
 
 module M :

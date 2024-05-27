@@ -62,7 +62,7 @@ let () =
   let else_mem2 = Mem.clone then_mem1 2 in
   let _ = Mem.set then_mem2 loc1 ~field:b ~data:val_2 pc in
   let _ = Mem.set else_mem2 loc1 ~field:b ~data:val_3 pc in
-  
+
   let then_mem1 = Mem.merge then_mem2 else_mem2 2 cond2 in
 
   let _ = Mem.set else_mem1 loc1 ~field:b ~data:val_4 pc in
@@ -70,4 +70,6 @@ let () =
   let mem = Mem.merge then_mem1 else_mem1 1 cond1 in
 
   (* TODO:x  *)
-  (* Format.printf "Memory: %a@." Mem.pp mem *)ignore mem;()
+  (* Format.printf "Memory: %a@." Mem.pp mem; *)
+  ignore mem;
+  ()

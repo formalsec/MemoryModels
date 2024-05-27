@@ -17,16 +17,23 @@ struct
 
   and t = record list
 
-  let create_empty_record ?(time = 0) () : record = Empty time
+  let create_empty_record ?(time = 0) () : record = Empty time [@@inline]
 
-  let create_record ?(time = 0) () : record =
-    Rec { concrete = Hashtbl.create 16; symbolic = None; time }
+  let create_record ?(time = 0) ?(concrete = Hashtbl.create 16)
+    ?(symbolic = None) () : record =
+    Rec { concrete; symbolic; time }
+  [@@inline]
 
   let create_if_record ?(time = 0) (cond : pc_value) (then_ : t) (else_ : t) :
     record =
     If { cond; then_; else_; time }
+  [@@inline]
 
   let create ?(time = 0) () : t = [ create_empty_record ~time () ]
+
+  let get_time (r : record) : int =
+    match r with Rec { time; _ } | If { time; _ } | Empty time -> time
+  [@@inline]
 
   let pp (fmt : Fmt.t) (o : t) : unit =
     let open Fmt in
@@ -63,27 +70,23 @@ struct
     new_rec :: o
 
   let rec split (o_ac : t) (o : t) (time : int) : t * t =
-    let get_time obj =
-      match obj with Rec { time; _ } | If { time; _ } | Empty time -> time
-    in
-
     match o with
     | [] -> (List.rev o_ac, [])
     | o_rec :: o' ->
       if get_time o_rec >= time then split (o_rec :: o_ac) o' time
       else (List.rev o_ac, o)
 
-  let merge (o1 : t) (o2 : t) (time : int) (pc : pc_value) : t =
+  let merge (o1 : t) (o2 : t) (time : int) (cond : pc_value) : t =
     let o1', o' = split [] o1 time in
     let o2', _ = split [] o2 time in
     let empty_record = create_empty_record ~time () in
-    let if_record = create_if_record ~time pc o1' o2' in
+    let if_record = create_if_record ~time cond o1' o2' in
     empty_record :: if_record :: o'
 
-  let single_merge (o : t) (time : int) (pc : pc_value) : t =
+  let single_merge (o : t) (time : int) (cond : pc_value) : t =
     let o', o'' = split [] o time in
     let empty_record = create_empty_record ~time () in
-    let if_record = create_if_record ~time pc o' [] in
+    let if_record = create_if_record ~time cond o' [] in
     empty_record :: if_record :: o''
 
   let set (o : t) ~(field : value) ~(data : value) (pc : pc_value) :
@@ -102,6 +105,30 @@ struct
         let empty_record = create_empty_record ~time:cur.time () in
         [ (empty_record :: new_record :: tl, pc) ] )
     | _ -> failwith "Object_wlmerge.set: unexpected case"
+
+  let write_conditional (o : t) ~(field : value) ~(data : value option)
+    (pc : pc_value) (cond : pc_value) : (t * pc_value) list =
+    let time = get_time (List.hd o) in
+    let empty_record = create_empty_record ~time () in
+    let o' =
+      match Expr.view field with
+      | Val (Str field) ->
+        let concrete = Hashtbl.create 16 in
+        Hashtbl.replace concrete field data;
+        [ create_record ~time ~concrete () ]
+      | _ ->
+        let new_record =
+          create_record ~time ~symbolic:(Some (field, data)) ()
+        in
+        [ empty_record; new_record ]
+    in
+
+    let if_record = create_if_record ~time cond o' [ empty_record ] in
+    [ (empty_record :: if_record :: o, pc) ]
+
+  let set_conditional (o : t) ~(field : value) ~(data : value) (pc : pc_value)
+    (cond : pc_value) : (t * pc_value) list =
+    write_conditional o ~field ~data:(Some data) pc cond
 
   let get_concrete (concrete : concrete_table) (pc : pc_value) (p : value) :
     bool * pc_value * (pc_value * value option) list =
@@ -222,6 +249,10 @@ struct
         [ (empty_record :: new_record :: tl, pc) ] )
     | [ Empty _ ] -> [ (o, pc) ]
     | _ -> failwith "Object_wlmerge.delete: unexpected case"
+
+  let delete_conditional (o : t) (field : value) (pc : pc_value)
+    (cond : pc_value) : (t * pc_value) list =
+    write_conditional o ~field ~data:None pc cond
 
   let to_list (o : t) : (value * value) list =
     (* Just calculates if there are just concrete fields *)
