@@ -57,7 +57,14 @@ let () =
   assert (Mem.get mem loc foo cond = [ (val_3, cond) ]);
   assert (Mem.get mem loc x cond = [ (ite (eq x foo) val_3 undef, cond) ]);
 
+  assert (Mem.has_field mem loc foo cond = value_bool true);
+  assert (Mem.has_field mem loc x cond = ite (eq x foo) (value_bool true) (value_bool false));
+
   (* pc = !(#y > 0) *)
   assert (Mem.get mem loc foo (not_ cond) = [ (val_3, not_ cond) ]);
   assert (
-    Mem.get mem loc x (not_ cond) = [ (ite (eq x foo) val_3 undef, not_ cond) ] )
+    Mem.get mem loc x (not_ cond) = [ (ite (eq x foo) val_3 undef, not_ cond) ] );
+
+  assert (Mem.has_field mem loc foo (not_ cond) = value_bool true );
+  assert (
+    Mem.has_field mem loc x (not_ cond) = ite (eq x foo) (value_bool true) (value_bool false))

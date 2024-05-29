@@ -52,6 +52,13 @@ let () =
     Mem.get mem merged_loc a pc
     = [ (ite cond val_200 (ite (not_ cond) undef undef), pc) ] );
 
+  assert (
+    Mem.has_field mem merged_loc c pc
+    = ite cond (value_bool true) (ite (not_ cond) (value_bool true) (value_bool false)));
+  assert (
+    Mem.has_field mem merged_loc a pc
+    = ite cond (value_bool true) (ite (not_ cond) (value_bool false) (value_bool false)));
+  
     (*
      ite(#y>3,
            then_expr,
@@ -75,4 +82,10 @@ let () =
             (ite (not_ cond) (ite (eq z c) val_5 undef) undef)
         , pc )
       ] );
-  ()
+  assert (
+    Mem.has_field mem merged_loc z pc
+    = ite cond
+            (ite (eq z c) (value_bool true) (ite (eq z a) (value_bool true) (value_bool false)))
+            (ite (not_ cond) (ite (eq z c) (value_bool true) (value_bool false)) (value_bool false))
+        )
+

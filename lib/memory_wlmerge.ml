@@ -133,10 +133,22 @@ struct
       set_object h loc obj;
       obj
 
-  let has_field (h : t) (loc : value) (field : value) (pc : pc_value) : value =
+  let has_field_aux (h : t) (loc : value) (field : value) (pc : pc_value) : value =
     Option.fold (get_object h loc)
       ~some:(fun o -> O.has_field o field pc)
       ~none:false_
+
+  
+  (* TODO:x simplify has_field *)
+  let has_field (h : t) (loc : value) (field : value) (pc : pc_value) : value =
+    let locs = get_locs_aux pc true_ loc in
+    let values =
+      List.fold_right
+        (fun (loc, cond) acc ->
+          let v = has_field_aux h loc field (and_ pc cond) in
+            ite cond v acc)
+      locs false_
+    in values
 
   let set_aux (h : t) (l : value) ~(field : value) ~(data : value)
     ?(cond : pc_value option = None) (pc : pc_value) : unit =
@@ -164,8 +176,12 @@ struct
           set_aux h loc ~field ~data ~cond:(Some cond) (and_ pc cond) )
         locs
 
-  let mk_ite_get (conds : (value * pc_value) list) : value =
-    List.fold_right (fun (v, cond) acc -> ite cond v acc) conds undef
+  let mk_ite_get (conds : (value option * pc_value) list) : value =
+    if List.exists (fun (v, _) -> Option.is_some v) conds then
+      List.fold_right
+        (fun (v, cond) acc -> ite cond (Option.value v ~default:undef) acc)
+        conds undef
+    else undef
 
   let get_aux (h : t) (loc : value) (field : value) (pc : pc_value) :
     (value * pc_value) list =
@@ -180,7 +196,7 @@ struct
       List.concat_map
         (fun (loc, cond) ->
           let rets = get_aux h loc field (and_ pc cond) in
-          List.map (fun (v, _) -> (v, cond)) rets )
+          List.map (fun (v, _) -> let v' = if Expr.equal v undef then None else Some v in (v', cond) ) rets )
         locs
     in
     [ (mk_ite_get values, pc) ]
