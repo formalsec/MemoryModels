@@ -1,110 +1,137 @@
-(* open Encoding
+open Utils.Encoding
+open Utils.Option
+open Smtml
 
-   module Make (O : Object_intf.S with type value = Encoding.Expr.t) = struct
-     type value = Encoding.Expr.t
-     type pc_value = Encoding.Expr.t
-     type object_ = O.t
+module Make
+    (O : Object_intf.S
+           with type value = Smtml.Expr.t
+            and type pc_value = Smtml.Expr.t) =
+struct
+  module IntSet = Set.Make (Int)
 
-     type t =
-       { parent : t option
-       ; map : (int, object_) Hashtbl.t
-       ; mutable next : int
-       }
+  type value = Smtml.Expr.t
+  type pc_value = Smtml.Expr.t
+  type object_ = O.t
 
-     let create () : t = { parent = None; map = Hashtbl.create 512; next = 0 }
+  type heap_rec = (int, object_) Hashtbl.t
 
-     let clone (h : t) : t =
-       { parent = Some h; map = Hashtbl.create 16; next = h.next }
+  type t = heap_rec list
 
-     let get_loc (loc : value) : int =
-       match Expr.view loc with
-       | Val (Int l) -> l
-       | _ -> failwith "memory_symbolic.get_loc: Not a location"
+  let loc = ref 0
+  let create () : t =
+    [ Hashtbl.create 512 ]
 
-     let insert (h : t) (o : object_) : value =
-       let next = h.next in
-       Hashtbl.replace h.map next o;
-       h.next <- h.next + 1;
-       Expr.(make @@ Val (Int next))
+  let pp_loc (fmt : Fmt.t) (loc : int) : unit = Fmt.pp_int fmt loc
 
-     let remove (h : t) (l : value) : unit =
-       let loc = get_loc l in
-       Hashtbl.remove h.map loc
+  let pp (fmt : Fmt.t) (h : t) =
+    let open Fmt in
+    let pp_v fmt (loc, o) = fprintf fmt "%a=>%a" pp_int loc O.pp o in
+    let pp_rec fmt map =
+      fprintf fmt "{@\n %a }"
+        (pp_hashtbl ~pp_sep:(fun fmt () -> fprintf fmt "@\n ") pp_v)
+        map
+    in
+    fprintf fmt "%a"
+      (pp_lst ~pp_sep:(fun fmt () -> fprintf fmt "@\n->@ ") pp_rec)
+      h
 
-     let set ({ map = h; _ } : t) (l : value) (data : object_) : unit =
-       let loc = get_loc l in
-       Hashtbl.replace h loc data
+  let get_loc (loc : value) : int =
+    match Expr.view loc with
+    | Val (Int l) -> l
+    | _ -> failwith "memory_mwl.get_loc: Not a location"
 
-     let find (h : t) (l : value) : (object_ * bool) option =
-       let open Utils.Option in
-       let loc = get_loc l in
-       let rec aux { parent; map; _ } loc from_parent =
-         match Hashtbl.find_opt map loc with
-         | Some o -> Some (o, from_parent)
-         | None ->
-           let* parent in
-           aux parent loc true
-       in
-       aux h loc false
+  let merge (_ : t) (_ : t) (_ : int) (_ : pc_value) : t =
+    failwith "memory_mwl.merge: Not implemented"
 
-     let get (h : t) (loc : value) : object_ option =
-       let open Utils.Option in
-       let+ obj, from_parent = find h loc in
-       match from_parent with
-       | false -> obj
-       | true ->
-         let obj = O.clone obj in
-         set h loc obj;
-         obj
+  let clone (h : t) _: t =
+    Hashtbl.create 64 :: h
 
-     let has_field (h : t) (loc : value) (field : value) (pc : pc_value) : value =
-       Option.fold (get h loc)
-         ~some:(fun o -> O.has_field o field pc)
-         ~none:Expr.(Bool.v false)
+  let alloc (h : t) : value =
+    let map = List.hd h in
+    let next = !loc in
+    let o = O.create () in
+    Hashtbl.replace map next o;
+    loc := !loc + 1;
+    Expr.(make @@ Val (Int next))
 
-     let set_field (h : t) (loc : value) ~(field : value) ~(data : value) (pc : pc_value) : unit =
-       Option.iter
-         (fun o ->
-           let o' = O.set o ~key:field ~data pc in
-           set h loc o' )
-         (get h loc)
+  let set_object (h : t) (l : value) (o : object_) : unit =
+    let h = List.hd h in
+    let loc = get_loc l in
+    Hashtbl.replace h loc o
 
-     let get_field (h : t) (loc : value) (field : value) (pc : pc_value) :
-       (value * value list) list =
-       let o = get h loc in
-       Option.fold o ~none:[] ~some:(fun o -> O.get o field pc)
+  let find_object (h : t) (l : value) : (object_ * bool) option =
+    let loc = get_loc l in
+    let rec aux h loc from_parent =
+      match h with
+      | [] -> None
+      | map :: tl -> 
+          match Hashtbl.find_opt map loc with
+          | Some o -> Some (o, from_parent)
+          | None -> aux tl loc true
+    in
+    aux h loc false
 
-     let delete_field (h : t) (loc : value) (f : value) (pc : pc_value) : unit =
-       let obj = get h loc in
-       Option.iter
-         (fun o ->
-           let o' = O.delete o f pc in
-           set h loc o' )
-         obj
+  let get_object (h : t) (loc : value) : object_ option =
+    let+ obj, from_parent = find_object h loc in
+    match from_parent with
+    | false -> obj
+    | true ->
+      let obj = O.clone obj in
+      set_object h loc obj;
+      obj
 
-     let pp_loc (fmt : Fmt.t) (loc : value) : unit = Expr.pp fmt loc
+  let has_field (h : t) (loc : value) (field : value) (pc : pc_value) : value =
+    Option.fold (get_object h loc) ~some:(fun o -> O.has_field o field pc) ~none:false_
 
-     let rec pp (fmt : Fmt.t) ({ map; parent; _ } : t) =
-       let open Fmt in
-       let pp_v fmt (key, data) = fprintf fmt "%a: %a" pp_int key O.pp data in
-       let pp_parent fmt v =
-         pp_opt (fun fmt h -> fprintf fmt "%a@\n<-@\n" pp h) fmt v
-       in
-       fprintf fmt "%a{ %a }" pp_parent parent
-         (pp_hashtbl ~pp_sep:pp_comma pp_v)
-         map
+  let set (h : t) (l : value) ~(field : value) ~(data : value)
+    (pc : pc_value) : unit =
+    Option.iter
+      (fun o ->
+        match O.set o ~field ~data pc with
+        | [ (o', _) ] -> set_object h l o'
+        | _ ->
+          failwith "memory_mwl.set_field: non/multiple objects returned" )
+      (get_object h l)
 
-     let pp_val (fmt : Fmt.t) (h : t) (l : value) : unit =
-       let open Fmt in
-       match get h l with
-       | None -> fprintf fmt "%a" pp_loc l
-       | Some o -> fprintf fmt "%a -> %a" pp_loc l O.pp o
-   end
+  let get (h : t) (loc : value) (field : value) (pc : pc_value) :
+    (value * pc_value) list =
+    let o = get_object h loc in
+    Option.fold o ~none:[] ~some:(fun o -> O.get o field pc)
 
-   module M :
-     Memory_intf.S
-       with type value = Encoding.Expr.t
-        and type object_ = Object_mwl.M.t =
-     Make (Object_symbolic.M)
+  let delete (h : t) (loc : value) (f : value) (pc : pc_value) : unit =
+    let obj = get_object h loc in
+    Option.iter
+      (fun o ->
+        match O.delete o f pc with
+        | [ (o', _) ] -> set_object h loc o'
+        | _ ->
+          failwith "memory_mwl.delete_field: non/multiple objects returned"
+        )
+      obj
 
-   include M *)
+  let get_fields (h : t) (loc : value) : value list =
+    let obj = get_object h loc in
+    Option.fold obj ~none:[] ~some:O.get_fields
+
+  let to_list (h : t) (loc : value) : (value * value) list =
+    let obj = get_object h loc in
+    Option.fold obj ~none:[] ~some:O.to_list
+
+  let pp_val (h : t) (fmt : Fmt.t) (loc : value) : unit =
+    let open Fmt in
+    match Expr.view loc with
+    | Val (Int l) -> (
+      match get_object h loc with
+      | None -> fprintf fmt "%a" pp_loc l
+      | Some o -> Fmt.fprintf fmt "%a -> %a" pp_loc l O.pp o )
+    | _ -> Fmt.fprintf fmt "%a" Expr.pp loc
+end
+
+module M :
+  Memory_intf.S
+    with type value = Smtml.Expr.t
+     and type pc_value = Smtml.Expr.t
+     and type object_ = Object_mwl.M.t =
+  Make (Object_mwl.M)
+
+include M

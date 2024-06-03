@@ -31,5 +31,5 @@ build: [
 ]
 dev-repo: "git+https://github.com/formalsec/MemoryModels.git"
 pin-depends: [
-   [ "smtml.dev" "git+https://github.com/formalsec/smtml#74f6547ab2afc4034456624d7d5d69f1a805ab5a"]
+   [ "smtml.dev" "git+https://github.com/formalsec/smtml#poly_mappings"]
 ]
