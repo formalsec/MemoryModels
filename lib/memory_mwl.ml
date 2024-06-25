@@ -40,6 +40,9 @@ struct
     | Val (Int l) -> l
     | _ -> failwith "memory_mwl.get_loc: Not a location"
 
+  let single_merge (_ : t) (_ : int) (_ : pc_value) : t =
+    failwith "memory_mwl.single_merge: Not implemented"
+  
   let merge (_ : t) (_ : t) (_ : int) (_ : pc_value) : t =
     failwith "memory_mwl.merge: Not implemented"
 

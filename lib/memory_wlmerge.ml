@@ -38,7 +38,7 @@ struct
       (pp_lst ~pp_sep:(fun fmt () -> fprintf fmt "@\n->@ ") pp_rec)
       h
 
-  let rec get_locs_aux (pc : pc_value) (s_pc : pc_value) (v : value) :
+  let rec get_locs (pc : pc_value) (s_pc : pc_value) (v : value) :
     (value * pc_value) list =
     let ( &&& ) e1 e2 = Expr.Bool.and_ e1 e2 in
     let not e1 = Expr.Bool.not e1 in
@@ -46,11 +46,11 @@ struct
     match Expr.view v with
     | Val (Int _) -> [ (v, s_pc) ]
     | Triop (_, Ty.Ite, c, e1, e2) ->
-      if pc => c then get_locs_aux pc s_pc e1
-      else if pc => not c then get_locs_aux pc s_pc e2
+      if pc => c then get_locs pc s_pc e1
+      else if pc => not c then get_locs pc s_pc e2
       else
-        let rets1 = get_locs_aux pc (s_pc &&& c) e1 in
-        let rets2 = get_locs_aux pc (s_pc &&& not c) e2 in
+        let rets1 = get_locs pc (s_pc &&& c) e1 in
+        let rets2 = get_locs pc (s_pc &&& not c) e2 in
         rets1 @ rets2
     | _ -> failwith "Error: Invalid Location"
 
@@ -58,6 +58,19 @@ struct
     match Expr.view loc with
     | Val (Int l) -> l
     | _ -> failwith "memory_wlmerge.get_loc: Not a location"
+
+  let single_merge (h : t) (time : int) (cond: pc_value) : t = 
+    match h with
+    | h' :: (hhd :: _ as new_h) ->
+      IntSet.iter (
+        fun l ->
+          let o' = Hashtbl.find h'.map l in
+          let new_o = O.single_merge o' time cond in
+          Hashtbl.replace hhd.map l new_o
+      ) !(h'.changes);
+      hhd.changes := IntSet.union !(hhd.changes) !(h'.changes);
+      new_h
+    | _ -> failwith "memory_wlmerge.single_merge: Unexepected cases"
 
   let merge (h1 : t) (h2 : t) (time : int) (cond : pc_value) : t =
     let single_merge h h' cond_ =
@@ -105,11 +118,11 @@ struct
     h.changes := IntSet.add next !(h.changes);
     Expr.(make @@ Val (Int next))
 
-  let set_object (h : t) (l : value) (o : object_) : unit =
+  let set_object (h : t) (l : value) ?(change=false) (o : object_) : unit =
     let h = List.hd h in
     let loc = get_loc l in
     Hashtbl.replace h.map loc o;
-    h.changes := IntSet.add loc !(h.changes)
+    if change then h.changes := IntSet.add loc !(h.changes) else ()
 
   let find_object (h : t) (l : value) : (object_ * bool) option =
     let loc = get_loc l in
@@ -141,7 +154,7 @@ struct
   
   (* TODO:x simplify has_field *)
   let has_field (h : t) (loc : value) (field : value) (pc : pc_value) : value =
-    let locs = get_locs_aux pc true_ loc in
+    let locs = get_locs pc true_ loc in
     let values =
       List.fold_right
         (fun (loc, cond) acc ->
@@ -160,14 +173,14 @@ struct
           | Some cond -> O.set_conditional o ~field ~data pc cond
         in
         match set_list with
-        | [ (o', _) ] -> set_object h l o'
+        | [ (o', _) ] -> set_object h l ~change:true o'
         | _ ->
           failwith "memory_wlmerge.set_field: non/multiple objects returned" )
       (get_object h l)
 
   let set (h : t) (l : value) ~(field : value) ~(data : value) (pc : pc_value) :
     unit =
-    let locs = get_locs_aux pc true_ l in
+    let locs = get_locs pc true_ l in
     match locs with
     | [ (loc, _) ] -> set_aux h loc ~field ~data pc
     | _ ->
@@ -190,7 +203,7 @@ struct
 
   let get (h : t) (loc : value) (field : value) (pc : pc_value) :
     (value * pc_value) list =
-    let locs = get_locs_aux pc true_ loc in
+    let locs = get_locs pc true_ loc in
     (* lista de (locs, pc), sem ter a pc geral em conta *)
     let values =
       List.concat_map
@@ -220,14 +233,14 @@ struct
           | Some cond -> O.delete_conditional o f pc cond
         in
         match delete_list with
-        | [ (o', _) ] -> set_object h loc o'
+        | [ (o', _) ] -> set_object h loc ~change:true o'
         | _ ->
           failwith "memory_wlmerge.delete_field: non/multiple objects returned"
         )
       obj
 
   let delete (h : t) (loc : value) (f : value) (pc : pc_value) : unit =
-    let locs = get_locs_aux pc true_ loc in
+    let locs = get_locs pc true_ loc in
     match locs with
     | [ (loc, _) ] -> delete_aux h loc f pc
     | _ ->
