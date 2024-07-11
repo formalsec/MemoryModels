@@ -37,7 +37,31 @@ struct
     fprintf fmt "%a"
       (pp_lst ~pp_sep:(fun fmt () -> fprintf fmt "@\n->@ ") pp_rec)
       h
-
+  
+  (* TODO: improve this function
+   * or maybe change hashtblt and use another data structure that is efficient in the function 
+   * equal when checking if the content is the same 
+   * (For instance, we can use Map - but we need to check whether the equal function does what we want) *)
+  let equal (h1 : t) (h2 : t) : bool =
+    let equal_map (m1 : (int, object_) Hashtbl.t) (m2 : (int, object_) Hashtbl.t) : bool =
+      if Hashtbl.length m1 <> Hashtbl.length m2 then false
+      else
+        Hashtbl.fold
+          (fun l o acc ->
+            match Hashtbl.find_opt m2 l with
+            | Some o' -> acc && O.equal o o'
+            | None -> false )
+          m1 true
+    in  
+    if List.length h1 <> List.length h2 then false
+    else
+      List.for_all2
+        (fun { map = map1; time = time1; changes = changes1 }
+             { map = map2; time = time2; changes = changes2 } ->
+          time1 = time2 && IntSet.equal !changes1 !changes2
+          && equal_map map1 map2)
+        h1 h2
+  
   let rec get_locs (pc : pc_value) (s_pc : pc_value) (v : value) :
     (value * pc_value) list =
     let ( &&& ) e1 e2 = Expr.Bool.and_ e1 e2 in
@@ -81,7 +105,7 @@ struct
     in
 
     match (h1, h2) with
-    | hr1 :: (h :: _ as h1'), hr2 :: h2' when h1' = h2' ->
+    | hr1 :: ((h :: _) as h1'), hr2 :: h2' when equal h1' h2' ->
       (* merge *)
       let changes = IntSet.inter !(hr1.changes) !(hr2.changes) in
       IntSet.iter
@@ -103,7 +127,13 @@ struct
       let new_changes = IntSet.union !(hr1.changes) !(hr2.changes) in
       h.changes := IntSet.union new_changes !(h.changes);
       h1'
-    | _ -> failwith "memory_wlmerge.merge: Unexepected cases"
+    | _ :: h1' :: _, _ :: h2' :: _ -> 
+      Format.eprintf "changes=? %b@." (IntSet.equal !(h1'.changes) !(h2'.changes));
+      Format.eprintf "time=? %b@." (Int.equal h1'.time h2'.time);
+      Format.eprintf "hashtblt=? %b@." (h1'.map = h2'.map);
+      Format.eprintf "--------------\nMemoryModels m1: %a--------------\nMemoryModels m1: %a@." pp h1 pp h2;
+      failwith "memory_wlmerge.merge: Unexepected cases"
+    | _ -> failwith "memory_wlmerge.merge: Unexepected cases1"
 
   let clone (h : t) (time : int) : t =
     { map = Hashtbl.create 64; time; changes = ref IntSet.empty } :: h

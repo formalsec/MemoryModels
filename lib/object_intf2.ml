@@ -46,6 +46,7 @@ module type S = sig
       [field]. *)
   val has_field : t -> value -> pc_value -> value
 
+  val equal : t -> t -> bool
   val pp : Fmt.t -> t -> unit
   val to_string : t -> string
 end

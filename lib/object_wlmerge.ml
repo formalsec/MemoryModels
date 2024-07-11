@@ -65,6 +65,41 @@ struct
 
   let to_string (o : t) : string = Fmt.asprintf "%a" pp o
 
+  (* TODO: improve this function - used by memory to check equality
+   * or maybe change hashtblt and use another data structure that is efficient in the function 
+   * equal when checking if the content is the same 
+   * (For instance, we can use Map - but we need to check whether the equal function does what we want) *)
+  let rec equal (o1 : t) (o2 : t) : bool =
+    let equal_symb_slot (s1 : symb_slot) (s2 : symb_slot) : bool = 
+      match (s1, s2) with
+      | None, None -> true
+      | Some (v1, o1), Some (v2, o2) -> Expr.equal v1 v2 && Option.equal Expr.equal o1 o2
+      | _ -> false
+    in
+    let equal_concrete_table (t1 : concrete_table) (t2 : concrete_table) : bool =
+      if Hashtbl.length t1 <> Hashtbl.length t2 then false
+      else
+        Hashtbl.fold
+          (fun k v acc ->
+            match Hashtbl.find_opt t2 k with
+            | Some v' -> acc && Option.equal Expr.equal v v'
+            | None -> false )
+          t1 true
+    in
+    let equal_record (r1 : record) (r2 : record) : bool =
+      match (r1, r2) with
+      | Rec { concrete = c1; symbolic = s1; time = t1 }, Rec { concrete = c2; symbolic = s2; time = t2 } ->
+        t1 = t2 && equal_concrete_table c1 c2 && equal_symb_slot s1 s2
+      | If { cond = c1; then_ = then_o1; else_ = else_o1; time = time1 }, If { cond = c2; then_ = then_o2; else_ = else_o2; time = time2 } ->
+        Expr.equal c1 c2 && time1 = time2 && 
+        equal then_o1 then_o2 && equal else_o1 else_o2
+      | Empty t1, Empty t2 -> t1 = t2
+      | _ -> false
+    in
+    if List.length o1 <> List.length o2 then false
+    else
+    List.for_all2 (fun r1 r2 -> equal_record r1 r2) o1 o2
+
   let clone (o : t) (time : int) : t =
     let new_rec = create_empty_record ~time () in
     new_rec :: o
