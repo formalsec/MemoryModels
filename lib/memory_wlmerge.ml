@@ -62,22 +62,33 @@ struct
           && equal_map map1 map2)
         h1 h2
   
-  let rec get_locs (pc : pc_value) (s_pc : pc_value) (v : value) :
+  let get_locs (pc : pc_value) (s_pc : pc_value) (v : value) :
     (value * pc_value) list =
-    let ( &&& ) e1 e2 = Expr.Bool.and_ e1 e2 in
-    let not e1 = Expr.Bool.not e1 in
 
-    match Expr.view v with
-    | Val (Int _) -> [ (v, s_pc) ]
-    | Triop (_, Ty.Ite, c, e1, e2) ->
-      if pc => c then get_locs pc s_pc e1
-      else if pc => not c then get_locs pc s_pc e2
-      else
-        let rets1 = get_locs pc (s_pc &&& c) e1 in
-        let rets2 = get_locs pc (s_pc &&& not c) e2 in
-        rets1 @ rets2
-    | _ -> failwith "Error: Invalid Location"
-
+    let rec get_locs_aux (pc : pc_value) (s_pc : pc_value) (v : value) :
+      (value * pc_value) list =
+      let ( &&& ) e1 e2 = Expr.Bool.and_ e1 e2 in
+      let not e1 = Expr.Bool.not e1 in
+      if is_sat [pc;s_pc] then 
+        match Expr.view v with
+        | Val (Int _) -> [ (v, s_pc) ]
+        | Triop (_, Ty.Ite, c, e1, e2) ->
+          if pc => c then get_locs_aux pc s_pc e1
+          else if pc => not c then get_locs_aux pc s_pc e2
+          else
+            let rets1 = get_locs_aux pc (s_pc &&& c) e1 in
+            let rets2 = get_locs_aux pc (s_pc &&& not c) e2 in
+            rets1 @ rets2
+        | _ -> failwith "Error: Invalid Location"
+      else (Format.printf "invalid case\n";[])
+    in 
+    let locs = get_locs_aux pc s_pc v in locs
+   (*  match locs with
+    | [] -> []
+    | (l, _) :: _ -> 
+      if List.for_all (fun (l', _) -> Expr.equal l l') locs then [ (l, pc) ]
+      else locs *)
+  
   let get_loc (loc : value) : int =
     match Expr.view loc with
     | Val (Int l) -> l
@@ -211,6 +222,7 @@ struct
   let set (h : t) (l : value) ~(field : value) ~(data : value) (pc : pc_value) :
     unit =
     let locs = get_locs pc true_ l in
+    (* Format.eprintf "locs : %a\n" Fmt.(pp_lst ~pp_sep:pp_comma ((fun fmt (loc, pc) -> Fmt.fprintf fmt "(%a, %a)" Expr.pp loc Expr.pp pc))) locs; *)
     match locs with
     | [ (loc, _) ] -> set_aux h loc ~field ~data pc
     | _ ->
