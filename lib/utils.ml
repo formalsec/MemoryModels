@@ -8,8 +8,9 @@ module Encoding = struct
   open Smtml
 
   type t = Expr.t
-
-  let solver = Solver.Z3_batch.create ()
+  
+  module Solver : Solver_intf.S = Solver.Batch (Poly_mappings)
+  let solver = Solver.create ()
   let undef = Expr.(make @@ Val (App (`Op "symbol", [ Str "undefined" ])))
   let str s = Expr.(make @@ Val (Str s))
   let true_ = Expr.(Bool.v true)
@@ -23,7 +24,7 @@ module Encoding = struct
   let is_val v = match Expr.view v with Val _ -> true | _ -> false
 
   let is_sat (exprs : t list) : bool =
-    match Solver.Z3_batch.check solver exprs with
+    match Solver.check solver exprs with
     | `Sat -> true
     | `Unsat -> false
     | `Unknown ->
