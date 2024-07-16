@@ -253,16 +253,23 @@ struct
         else (r, s_pc, pvs) )
       (false, pc, []) o
 
-  let mk_ite_get (conds : (pc_value * value option) list) : value =
-    if List.exists (fun (_, v) -> Option.is_some v) conds then
-      List.fold_right
-        (fun (cond, v) acc -> ite cond (Option.value v ~default:undef) acc)
-        conds undef
-    else undef
+  let mk_ite_get (conds : (pc_value * value option) list) (b : bool) : value =
+    let rec mk_ite_get_aux (conds : (pc_value * value option) list) : value =
+      if List.exists (fun (_, v) -> Option.is_some v) conds then
+        match conds with
+        | [] -> undef
+        | [ (_, v) ] -> Option.value v ~default:undef
+        | (cond, v) :: tl ->
+          ite cond (Option.value v ~default:undef) (mk_ite_get_aux tl)
+      else undef
+    in
+    match b with
+    | false -> mk_ite_get_aux (conds @ [ (true_, None) ])
+    | true -> mk_ite_get_aux conds
 
   let get (o : t) (field : value) (pc : pc_value) : (value * pc_value) list =
-    let _, _, l = get_object field pc o in
-    let ite_expr = mk_ite_get l in
+    let r, _, l = get_object field pc o in
+    let ite_expr = mk_ite_get l r in
     [ (ite_expr, pc) ]
 
   let delete (o : t) (field : value) (pc : pc_value) : (t * pc_value) list =

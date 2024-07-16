@@ -47,10 +47,10 @@ let () =
 
   assert (
     Mem.get mem merged_loc c pc
-    = [ (ite cond val_3 (ite (not_ cond) val_5 undef), pc) ] );
+    = [ (ite cond val_3 val_5, pc) ] );
   assert (
     Mem.get mem merged_loc a pc
-    = [ (ite cond val_200 (ite (not_ cond) undef undef), pc) ] );
+    = [ (ite cond val_200 undef, pc) ] );
 
   assert (
     Mem.has_field mem merged_loc c pc
@@ -62,9 +62,7 @@ let () =
     (*
      ite(#y>3,
            then_expr,
-           ite(!(#y>3),
-                 else_expr),
-                 undef)
+           else_expr)
 
      then_expr = ite(z=c,
                        3,
@@ -79,7 +77,7 @@ let () =
     Mem.get mem merged_loc z pc
     = [ ( ite cond
             (ite (eq z c) val_3 (ite (eq z a) val_200 undef))
-            (ite (not_ cond) (ite (eq z c) val_5 undef) undef)
+            (ite (eq z c) val_5 undef)
         , pc )
       ] );
   assert (

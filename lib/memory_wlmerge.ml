@@ -80,14 +80,9 @@ struct
             let rets2 = get_locs_aux pc (s_pc &&& not c) e2 in
             rets1 @ rets2
         | _ -> failwith "Error: Invalid Location"
-      else (Format.printf "invalid case\n";[])
+      else []
     in 
-    let locs = get_locs_aux pc s_pc v in locs
-   (*  match locs with
-    | [] -> []
-    | (l, _) :: _ -> 
-      if List.for_all (fun (l', _) -> Expr.equal l l') locs then [ (l, pc) ]
-      else locs *)
+    get_locs_aux pc s_pc v 
   
   let get_loc (loc : value) : int =
     match Expr.view loc with
@@ -138,12 +133,6 @@ struct
       let new_changes = IntSet.union !(hr1.changes) !(hr2.changes) in
       h.changes := IntSet.union new_changes !(h.changes);
       h1'
-    | _ :: h1' :: _, _ :: h2' :: _ -> 
-      Format.eprintf "changes=? %b@." (IntSet.equal !(h1'.changes) !(h2'.changes));
-      Format.eprintf "time=? %b@." (Int.equal h1'.time h2'.time);
-      Format.eprintf "hashtblt=? %b@." (h1'.map = h2'.map);
-      Format.eprintf "--------------\nMemoryModels m1: %a--------------\nMemoryModels m1: %a@." pp h1 pp h2;
-      failwith "memory_wlmerge.merge: Unexepected cases"
     | _ -> failwith "memory_wlmerge.merge: Unexepected cases1"
 
   let clone (h : t) (time : int) : t =
@@ -222,7 +211,6 @@ struct
   let set (h : t) (l : value) ~(field : value) ~(data : value) (pc : pc_value) :
     unit =
     let locs = get_locs pc true_ l in
-    (* Format.eprintf "locs : %a\n" Fmt.(pp_lst ~pp_sep:pp_comma ((fun fmt (loc, pc) -> Fmt.fprintf fmt "(%a, %a)" Expr.pp loc Expr.pp pc))) locs; *)
     match locs with
     | [ (loc, _) ] -> set_aux h loc ~field ~data pc
     | _ ->
@@ -231,11 +219,15 @@ struct
           set_aux h loc ~field ~data ~cond:(Some cond) (and_ pc cond) )
         locs
 
-  let mk_ite_get (conds : (value option * pc_value) list) : value =
-    if List.exists (fun (v, _) -> Option.is_some v) conds then
-      List.fold_right
-        (fun (v, cond) acc -> ite cond (Option.value v ~default:undef) acc)
-        conds undef
+  let rec mk_ite_get (conds : (value * pc_value) list) (pc : pc_value) (s_pc : pc_value) : value =
+    let ( &&& ) e1 e2 = Expr.Bool.and_ e1 e2 in
+
+    if is_sat [pc;s_pc] then
+      match conds with
+      | [] -> undef
+      | [ (v, _) ] -> v
+      | (v, cond) :: tl ->
+        ite cond v (mk_ite_get tl pc (s_pc &&& not_ cond))
     else undef
 
   let get_aux (h : t) (loc : value) (field : value) (pc : pc_value) :
@@ -251,18 +243,10 @@ struct
       List.concat_map
         (fun (loc, cond) ->
           let rets = get_aux h loc field (and_ pc cond) in
-          List.map (fun (v, _) -> let v' = if Expr.equal v undef then None else Some v in (v', cond) ) rets )
+          List.map (fun (v, _) -> (v, cond) ) rets)
         locs
     in
-    [ (mk_ite_get values, pc) ]
-
-  (* ite(y>10, loc(1), loc(2)); pc = true
-     get_aux loc(1) field (pc=true and y>10) -> [(value1, pc)]
-     get_aux loc(2) field (pc=y<=10) -> [(value2, pc)]
-
-     [(value1, y>10), (value2, y<=10)]
-     ite(y>10, value1, ite(y<=10, value2, undef))
-  *)
+    [ (mk_ite_get values pc true_, pc) ]
 
   let delete_aux (h : t) (loc : value) (f : value)
     ?(cond : pc_value option = None) (pc : pc_value) : unit =

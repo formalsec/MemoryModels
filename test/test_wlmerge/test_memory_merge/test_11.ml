@@ -67,7 +67,7 @@ let () =
   assert (
     Mem.get mem loc c pc
     = [ ( ite (and_ cond1 cond2) val_3
-            (ite (and_ cond1 (not_ cond2)) val_3 (ite (not_ cond1) val_5 undef))
+            (ite (and_ cond1 (not_ cond2)) val_3 val_5)
         , pc )
       ] );
   assert (Mem.get mem loc1 c pc = [ (ite (and_ cond1 cond2) val_3 undef, pc) ]);
@@ -79,7 +79,7 @@ let () =
             (ite
                (and_ cond1 (not_ cond2))
                get_x_value
-               (ite (not_ cond1) (ite (eq x c) val_5 undef) undef) )
+               (ite (eq x c) val_5 undef) )
         , pc )
       ] );
 

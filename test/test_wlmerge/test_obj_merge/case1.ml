@@ -39,7 +39,7 @@ let () =
   (* test get *)
   assert (
     Obj.get merged_obj a pc
-    = [ (ite cond val_1 (ite (not_ cond) val_2 undef), pc) ] );
+    = [ (ite cond val_1 val_2, pc) ] );
   assert (
     Obj.get merged_obj x pc
     = [ ( ite

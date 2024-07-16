@@ -44,14 +44,10 @@ let () =
 
   assert (
     Mem.get mem loc foo pc
-    = [ (ite cond val_3 (ite (not_ cond) val_3 undef), pc) ] );
+    = [ (val_3, pc) ] );
   assert (
     Mem.get mem loc x pc
-    = [ ( ite cond
-            (ite (eq x foo) val_3 undef)
-            (ite (not_ cond) (ite (eq x foo) val_3 undef) undef)
-        , pc )
-      ] );
+    = [ ( ite (eq x foo) val_3 undef, pc ) ] );
 
   (* pc = #y > 0 *)
   assert (Mem.get mem loc foo cond = [ (val_3, cond) ]);
