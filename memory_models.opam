@@ -12,6 +12,7 @@ depends: [
   "ocaml" {>= "4.14.0"}
   "dune" {>= "3.2"}
   "smtml"
+  "z3"
   "bisect_ppx" {with-test & >= "2.5.0"}
   "odoc" {with-doc}
 ]
